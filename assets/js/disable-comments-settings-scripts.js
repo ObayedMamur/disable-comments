@@ -319,6 +319,13 @@ jQuery(document).ready(function ($) {
 					});
 					saveBtn.removeClass('form-dirty').prop('disabled', true);
 					savedData = $form.serialize();
+				} else {
+					saveBtn.html(__("Save Settings", "disable-comments"));
+					Swal.fire({
+						icon: "error",
+						title: __("Oops...", "disable-comments"),
+						text: response.data && response.data.message ? response.data.message : __("Something went wrong!", "disable-comments"),
+					});
 				}
 			},
 			error: function () {
@@ -369,7 +376,7 @@ jQuery(document).ready(function ($) {
 						Swal.fire({
 							icon: "success",
 							title: __("Deleted", "disable-comments"),
-							html: response.data.message,
+							text: response.data.message,
 							timer: 3000,
 							showConfirmButton: false,
 						});
@@ -377,10 +384,17 @@ jQuery(document).ready(function ($) {
 						Swal.fire({
 							icon: "error",
 							title: __("Oops...", "disable-comments"),
-							html: response.data.message,
+							text: response.data && response.data.message ? response.data.message : __("Something went wrong!", "disable-comments"),
 							showConfirmButton: true,
 						});
 					}
+				}).fail(function () {
+					deleteBtn.html(__("Delete Comments", "disable-comments"));
+					Swal.fire({
+						icon: "error",
+						title: __("Oops...", "disable-comments"),
+						text: __("Something went wrong!", "disable-comments"),
+					});
 				});
 			}
 		});

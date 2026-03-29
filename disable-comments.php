@@ -1123,7 +1123,7 @@ class Disable_Comments {
 		foreach ($editable_roles as $role => $details) {
 			$roles[] = [
 				"id" => esc_attr($role),
-				"text" => esc_html(translate_user_role($details['name'])),
+				"text" => translate_user_role($details['name']),
 				"selected" => in_array($role, (array) $selected),
 			];
 		}
@@ -1163,7 +1163,7 @@ class Disable_Comments {
 	public function get_sub_sites() {
 		$nonce = (isset($_REQUEST['nonce']) ? sanitize_text_field(wp_unslash($_REQUEST['nonce'])) : '');
 		if (!wp_verify_nonce($nonce, 'disable_comments_save_settings')) {
-			wp_send_json(['data' => [], 'totalNumber' => 0]);
+			wp_send_json_error(['message' => __('Invalid request. Please refresh the page and try again.', 'disable-comments')], 403);
 		}
 
 		$required_cap = is_multisite() ? 'manage_network_plugins' : 'manage_options';
