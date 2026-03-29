@@ -1261,7 +1261,7 @@ class Disable_Comments {
 				$this->options['extra_post_types'] = array_diff($extra_post_types, array_keys($post_types)); // Make sure we don't double up builtins.
 			}
 
-			if (isset($formArray['sitewide_settings'])) {
+			if ($is_network_action && isset($formArray['sitewide_settings'])) {
 				update_site_option('disable_comments_sitewide_settings', $formArray['sitewide_settings']);
 			}
 
