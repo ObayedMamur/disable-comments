@@ -116,11 +116,7 @@ class Disable_Comments {
 	}
 
 	public function is_network_admin() {
-		$sanitized_referer = isset($_SERVER['HTTP_REFERER']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_REFERER'])) : '';
-		if (is_network_admin() || !empty($sanitized_referer) && defined('DOING_AJAX') && DOING_AJAX && is_multisite() && preg_match('#^' . network_admin_url() . '#i', $sanitized_referer)) {
-			return true;
-		}
-		return false;
+		return is_network_admin();
 	}
 	/**
 	 * Enable CLI
