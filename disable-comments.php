@@ -1330,6 +1330,13 @@ class Disable_Comments {
 		if (($this->is_CLI && !empty($_args)) || wp_verify_nonce($nonce, 'disable_comments_save_settings')) {
 			$formArray = $this->get_form_array_escaped($_args);
 
+			if (!$this->is_CLI) {
+				$required_cap = $this->is_network_admin() ? 'manage_network_plugins' : 'manage_options';
+				if (!current_user_can($required_cap)) {
+					wp_send_json_error(['message' => __('Insufficient permissions.', 'disable-comments')]);
+				}
+			}
+
 			if (!empty($formArray['is_network_admin']) && function_exists('get_sites') && class_exists('WP_Site_Query')) {
 				$sites = get_sites([
 					'number' => 0,
@@ -1338,6 +1345,9 @@ class Disable_Comments {
 				foreach ($sites as $blog_id) {
 					// $formArray['disabled_sites'] ids don't include "site_" prefix.
 					if (!empty($formArray['disabled_sites']) && !empty($formArray['disabled_sites']["site_$blog_id"])) {
+						if (!is_super_admin() && !is_user_member_of_blog(get_current_user_id(), $blog_id)) {
+							continue; // Skip sites the user doesn't belong to
+						}
 						switch_to_blog($blog_id);
 						$log = $this->delete_comments($_args);
 						restore_current_blog();
