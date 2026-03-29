@@ -19,6 +19,7 @@ composer.lock
 Gruntfile.js
 package.json
 package-lock.json
+pnpm-lock.yaml
 prepros.config
 phpunit.xml
 phpunit.xml.dist
