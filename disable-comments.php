@@ -1115,7 +1115,7 @@ class Disable_Comments {
 		foreach ($editable_roles as $role => $details) {
 			$roles[] = [
 				"id" => esc_attr($role),
-				"text" => translate_user_role($details['name']),
+				"text" => esc_html(translate_user_role($details['name'])),
 				"selected" => in_array($role, (array) $selected),
 			];
 		}

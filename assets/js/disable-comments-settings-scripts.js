@@ -432,7 +432,10 @@ jQuery(document).ready(function ($) {
 						}).map(function(val, index){
 							return val.id;
 						});
-						var text = "<b>" + _selectedOptions.join("</b>, <b>") + "</b>";
+						var escapedOptions = _selectedOptions.map(function(label) {
+							return $('<span>').text(label).html();
+						});
+						var text = "<b>" + escapedOptions.join("</b>, <b>") + "</b>";
 						excludedRoles.html(sprintf(__("Comments are visible to %s and <b>Logged out users</b>.", "disable-comments"), text));
 						includedRoles.text(__("No comments will be visible to other roles.", "disable-comments"));
 					}
@@ -441,7 +444,10 @@ jQuery(document).ready(function ($) {
 					var selectedOptionsLabels = selectedOptions.map(function(val, index){
 						return val.text;
 					});
-					var text = "<b>" + selectedOptionsLabels.join("</b>, <b>") + "</b>";
+					var escapedLabels = selectedOptionsLabels.map(function(label) {
+						return $('<span>').text(label).html();
+					});
+					var text = "<b>" + escapedLabels.join("</b>, <b>") + "</b>";
 					excludedRoles.html(sprintf(__("Comments are visible to %s.", "disable-comments"), text));
 					includedRoles.text(__("Other roles and logged out users won't see any comments.", "disable-comments"));
 				}
