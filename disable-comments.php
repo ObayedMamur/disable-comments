@@ -120,9 +120,8 @@ class Disable_Comments {
 			return true;
 		}
 		if (defined('DOING_AJAX') && DOING_AJAX) {
-			return !empty($_GET['is_network_admin'])
-				&& $_GET['is_network_admin'] === '1'
-				&& current_user_can('manage_network_plugins');
+			$is_network_admin_param = isset($_REQUEST['is_network_admin']) ? sanitize_text_field(wp_unslash($_REQUEST['is_network_admin'])) : '';
+			return $is_network_admin_param === '1' && current_user_can('manage_network_plugins');
 		}
 		return false;
 	}
@@ -834,7 +833,7 @@ class Disable_Comments {
 			}
 
 			// translators: %s: disabled post types.
-			echo '<div class="notice notice-warning"><p>' . sprintf(__('Note: The <em>Disable Comments</em> plugin is currently active, and comments are completely disabled on: %s. Many of the settings below will not be applicable for those post types.', 'disable-comments'), implode(__(', ', 'disable-comments'), $names_escaped)) . '</p></div>';
+			echo '<div class="notice notice-warning"><p>' . wp_kses_post(sprintf(__('Note: The <em>Disable Comments</em> plugin is currently active, and comments are completely disabled on: %s. Many of the settings below will not be applicable for those post types.', 'disable-comments'), implode(__(', ', 'disable-comments'), $names_escaped))) . '</p></div>';
 		}
 	}
 
@@ -1234,7 +1233,7 @@ class Disable_Comments {
 				: $this->is_network_admin();
 			$required_cap = $is_network_action ? 'manage_network_plugins' : 'manage_options';
 			if (!$this->is_CLI && !current_user_can($required_cap)) {
-				wp_send_json_error(['message' => __('Insufficient permissions.', 'disable-comments')]);
+				wp_send_json_error(['message' => __('Insufficient permissions.', 'disable-comments')], 403);
 			}
 
 			$old_options = $this->is_CLI ? $this->options : ($is_network_action ? get_site_option('disable_comments_options', []) : $this->options);
@@ -1352,7 +1351,7 @@ class Disable_Comments {
 			if (!$this->is_CLI) {
 				$required_cap = $is_network_action ? 'manage_network_plugins' : 'manage_options';
 				if (!current_user_can($required_cap)) {
-					wp_send_json_error(['message' => __('Insufficient permissions.', 'disable-comments')]);
+					wp_send_json_error(['message' => __('Insufficient permissions.', 'disable-comments')], 403);
 				}
 			}
 
@@ -1880,7 +1879,7 @@ class Disable_Comments {
 			),
 			'disabled_post_type_count' => array(
 				'label' => __('Disabled Post Types Count', 'disable-comments'),
-				'value' => sprintf(__('%1$d of %2$d', 'disable-comments'), count($data['disabled_post_types']), $data['total_post_types']),
+				'value' => sprintf(esc_html__('%1$d of %2$d', 'disable-comments'), count($data['disabled_post_types']), $data['total_post_types']),
 			),
 			'disabled_post_types' => array(
 				'label' => __('Disabled Post Types', 'disable-comments'),

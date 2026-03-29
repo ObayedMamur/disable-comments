@@ -6,7 +6,9 @@ jQuery(document).ready(function ($) {
 	var saveBtn   = jQuery("#disableCommentSaveSettings button.button.button__success");
 	var deleteBtn = jQuery("#deleteCommentSettings button.button.button__delete");
 	var savedData;
-	var networkAjaxUrl = ajaxurl + (disableCommentsObj.is_network_admin === '1' ? '?is_network_admin=1' : '');
+	var networkAjaxUrl = disableCommentsObj.is_network_admin === '1'
+		? ajaxurl + (ajaxurl.indexOf('?') === -1 ? '?' : '&') + 'is_network_admin=1'
+		: ajaxurl;
 
 	if(jQuery('.sites_list_wrapper').length){
 		var addSite   = function($sites_list, site, type){
