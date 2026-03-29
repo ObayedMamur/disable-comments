@@ -1218,12 +1218,12 @@ class Disable_Comments {
 		$nonce = (isset($_POST['nonce']) ? sanitize_text_field(wp_unslash($_POST['nonce'])) : '');
 		if (($this->is_CLI && !empty($_args)) || wp_verify_nonce($nonce, 'disable_comments_save_settings')) {
 
-			$required_cap = $this->is_network_admin() ? 'manage_network_plugins' : 'manage_options';
+			$formArray = $this->get_form_array_escaped($_args);
+			$is_network_action = !empty($formArray['is_network_admin']) && $formArray['is_network_admin'] == '1';
+			$required_cap = $is_network_action ? 'manage_network_plugins' : 'manage_options';
 			if (!$this->is_CLI && !current_user_can($required_cap)) {
 				wp_send_json_error(['message' => __('Insufficient permissions.', 'disable-comments')]);
 			}
-
-			$formArray = $this->get_form_array_escaped($_args);
 
 			$old_options = $this->options;
 			$this->options = [];
@@ -1266,7 +1266,7 @@ class Disable_Comments {
 			}
 
 			if (isset($formArray['disable_avatar'])) {
-				if ($this->is_network_admin()) {
+				if ($is_network_action && current_user_can('manage_network_plugins')) {
 					if ($formArray['disable_avatar'] == '0' || $formArray['disable_avatar'] == '1') {
 						$sites = get_sites([
 							'number' => 0,
@@ -1335,7 +1335,8 @@ class Disable_Comments {
 			$formArray = $this->get_form_array_escaped($_args);
 
 			if (!$this->is_CLI) {
-				$required_cap = $this->is_network_admin() ? 'manage_network_plugins' : 'manage_options';
+				$is_network_action = !empty($formArray['is_network_admin']) && $formArray['is_network_admin'] == '1';
+				$required_cap = $is_network_action ? 'manage_network_plugins' : 'manage_options';
 				if (!current_user_can($required_cap)) {
 					wp_send_json_error(['message' => __('Insufficient permissions.', 'disable-comments')]);
 				}
