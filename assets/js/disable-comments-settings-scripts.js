@@ -77,6 +77,12 @@ jQuery(document).ready(function ($) {
 						},
 					};
 				},
+				formatAjaxError: function(jqXHR) {
+					var msg = jqXHR.responseJSON && jqXHR.responseJSON.data && jqXHR.responseJSON.data.message
+						? jqXHR.responseJSON.data.message
+						: __('Something went wrong!', 'disable-comments');
+					Swal.fire({ icon: 'error', title: __('Oops...', 'disable-comments'), text: msg });
+				},
 				callback       : function(data, pagination) {
 					var pageNumber = pagination.pageNumber;
 					addSites($sites_list, data, type);
@@ -328,12 +334,15 @@ jQuery(document).ready(function ($) {
 					});
 				}
 			},
-			error: function () {
-				saveBtn.html("Save Settings");
+			error: function (jqXHR) {
+				saveBtn.html(__("Save Settings", "disable-comments"));
+				var msg = jqXHR.responseJSON && jqXHR.responseJSON.data && jqXHR.responseJSON.data.message
+					? jqXHR.responseJSON.data.message
+					: __("Something went wrong!", "disable-comments");
 				Swal.fire({
-					type: "error",
+					icon: "error",
 					title: __("Oops...", "disable-comments"),
-					text: __("Something went wrong!", "disable-comments"),
+					text: msg,
 				});
 			},
 		});
@@ -388,12 +397,15 @@ jQuery(document).ready(function ($) {
 							showConfirmButton: true,
 						});
 					}
-				}).fail(function () {
+				}).fail(function (jqXHR) {
 					deleteBtn.html(__("Delete Comments", "disable-comments"));
+					var msg = jqXHR.responseJSON && jqXHR.responseJSON.data && jqXHR.responseJSON.data.message
+						? jqXHR.responseJSON.data.message
+						: __("Something went wrong!", "disable-comments");
 					Swal.fire({
 						icon: "error",
 						title: __("Oops...", "disable-comments"),
-						text: __("Something went wrong!", "disable-comments"),
+						text: msg,
 					});
 				});
 			}
