@@ -116,7 +116,15 @@ class Disable_Comments {
 	}
 
 	public function is_network_admin() {
-		return is_network_admin();
+		if (is_network_admin()) {
+			return true;
+		}
+		if (defined('DOING_AJAX') && DOING_AJAX) {
+			return !empty($_GET['is_network_admin'])
+				&& $_GET['is_network_admin'] === '1'
+				&& current_user_can('manage_network_plugins');
+		}
+		return false;
 	}
 	/**
 	 * Enable CLI
@@ -792,7 +800,8 @@ class Disable_Comments {
 					'save_action' => 'disable_comments_save_settings',
 					'delete_action' => 'disable_comments_delete_comments',
 					'settings_URI' => $this->settings_page_url(),
-					'_nonce' => wp_create_nonce('disable_comments_save_settings')
+					'_nonce' => wp_create_nonce('disable_comments_save_settings'),
+					'is_network_admin' => is_network_admin() ? '1' : '0'
 				)
 			);
 			wp_set_script_translations('disable-comments-scripts', 'disable-comments');
@@ -1158,8 +1167,9 @@ class Disable_Comments {
 			wp_send_json(['data' => [], 'totalNumber' => 0]);
 		}
 
-		if (!current_user_can('manage_network_plugins') && !current_user_can('manage_options')) {
-			wp_send_json(['data' => [], 'totalNumber' => 0]);
+		$required_cap = is_multisite() ? 'manage_network_plugins' : 'manage_options';
+		if (!current_user_can($required_cap)) {
+			wp_send_json_error(['message' => __('Sorry, you are not allowed to access this resource.', 'disable-comments')], 403);
 		}
 
 		$_sub_sites = [];
@@ -1219,19 +1229,21 @@ class Disable_Comments {
 		if (($this->is_CLI && !empty($_args)) || wp_verify_nonce($nonce, 'disable_comments_save_settings')) {
 
 			$formArray = $this->get_form_array_escaped($_args);
-			$is_network_action = !empty($formArray['is_network_admin']) && $formArray['is_network_admin'] == '1';
+			$is_network_action = $this->is_CLI
+				? (!empty($formArray['is_network_admin']) && $formArray['is_network_admin'] == '1')
+				: $this->is_network_admin();
 			$required_cap = $is_network_action ? 'manage_network_plugins' : 'manage_options';
 			if (!$this->is_CLI && !current_user_can($required_cap)) {
 				wp_send_json_error(['message' => __('Insufficient permissions.', 'disable-comments')]);
 			}
 
-			$old_options = $this->options;
+			$old_options = $this->is_CLI ? $this->options : ($is_network_action ? get_site_option('disable_comments_options', []) : $this->options);
 			$this->options = [];
 			if ($this->is_CLI) {
 				$this->options = $old_options;
 			}
 
-			$this->options['is_network_admin'] = isset($formArray['is_network_admin']) && $formArray['is_network_admin'] == '1' ? true : false;
+			$this->options['is_network_admin'] = $is_network_action;
 
 			if (!empty($this->options['is_network_admin']) && function_exists('get_sites') && empty($formArray['sitewide_settings'])) {
 				$formArray['disabled_sites'] = isset($formArray['disabled_sites']) ? $formArray['disabled_sites'] : [];
@@ -1266,7 +1278,7 @@ class Disable_Comments {
 			}
 
 			if (isset($formArray['disable_avatar'])) {
-				if ($is_network_action && current_user_can('manage_network_plugins')) {
+				if ($is_network_action) {
 					if ($formArray['disable_avatar'] == '0' || $formArray['disable_avatar'] == '1') {
 						$sites = get_sites([
 							'number' => 0,
@@ -1333,16 +1345,18 @@ class Disable_Comments {
 
 		if (($this->is_CLI && !empty($_args)) || wp_verify_nonce($nonce, 'disable_comments_save_settings')) {
 			$formArray = $this->get_form_array_escaped($_args);
+			$is_network_action = $this->is_CLI
+				? (!empty($formArray['is_network_admin']) && $formArray['is_network_admin'] == '1')
+				: $this->is_network_admin();
 
 			if (!$this->is_CLI) {
-				$is_network_action = !empty($formArray['is_network_admin']) && $formArray['is_network_admin'] == '1';
 				$required_cap = $is_network_action ? 'manage_network_plugins' : 'manage_options';
 				if (!current_user_can($required_cap)) {
 					wp_send_json_error(['message' => __('Insufficient permissions.', 'disable-comments')]);
 				}
 			}
 
-			if (!empty($formArray['is_network_admin']) && function_exists('get_sites') && class_exists('WP_Site_Query')) {
+			if ($is_network_action && function_exists('get_sites') && class_exists('WP_Site_Query')) {
 				$sites = get_sites([
 					'number' => 0,
 					'fields' => 'ids',
