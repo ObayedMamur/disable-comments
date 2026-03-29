@@ -39,4 +39,5 @@ assets/img/card
 *.map
 assets/scss
 .ai/
+.claude/
 CLAUDE.md
