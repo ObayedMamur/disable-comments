@@ -10,6 +10,8 @@
 
 class AjaxSettingsTest extends WP_Ajax_UnitTestCase {
 
+	use PluginOptionsTrait;
+
 	/** @var Disable_Comments */
 	private $plugin;
 
@@ -223,15 +225,4 @@ class AjaxSettingsTest extends WP_Ajax_UnitTestCase {
 		$this->assertTrue( $response['success'] );
 	}
 
-	// -------------------------------------------------------------------------
-	// Helper
-	// -------------------------------------------------------------------------
-
-	private function reset_plugin() {
-		$reflection = new ReflectionProperty( Disable_Comments::class, 'instance' );
-		$reflection->setAccessible( true );
-		$reflection->setValue( null, null );
-		$this->plugin = Disable_Comments::get_instance();
-		$this->plugin->is_CLI = true;
-	}
 }

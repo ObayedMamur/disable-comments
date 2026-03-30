@@ -10,6 +10,10 @@
 
 class DeleteCommandTest extends WP_UnitTestCase {
 
+	use PluginOptionsTrait {
+		set_options as trait_set_options;
+	}
+
 	/** @var Disable_Comments */
 	private $plugin;
 
@@ -158,25 +162,8 @@ class DeleteCommandTest extends WP_UnitTestCase {
 		return (int) $wpdb->get_var( "SELECT COUNT(*) FROM $wpdb->comments" );
 	}
 
-	private function set_options( array $overrides ) {
-		$defaults = array(
-			'db_version'               => Disable_Comments::DB_VERSION,
-			'remove_everywhere'        => false,
-			'disabled_post_types'      => array(),
-			'extra_post_types'         => array(),
-			'allowed_comment_types'    => array(),
-			'show_existing_comments'   => false,
-			'enable_exclude_by_role'   => false,
-			'exclude_by_role'          => array(),
-			'remove_xmlrpc_comments'   => 0,
-			'remove_rest_API_comments' => 0,
-		);
-		$options = array_merge( $defaults, $overrides );
-		update_option( 'disable_comments_options', $options );
-		$reflection = new ReflectionProperty( Disable_Comments::class, 'instance' );
-		$reflection->setAccessible( true );
-		$reflection->setValue( null, null );
-		$this->plugin = Disable_Comments::get_instance();
+	protected function set_options( array $overrides = array() ): void {
+		$this->trait_set_options( $overrides );
 		$this->plugin->is_CLI = true;
 	}
 }

@@ -11,6 +11,8 @@
 
 class DisableCommandTest extends WP_UnitTestCase {
 
+	use PluginOptionsTrait;
+
 	/** @var Disable_Comments */
 	private $plugin;
 

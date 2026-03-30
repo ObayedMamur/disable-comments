@@ -10,6 +10,8 @@
 
 class SettingsMigrationTest extends WP_UnitTestCase {
 
+	use PluginOptionsTrait;
+
 	public function tear_down() {
 		delete_option( 'disable_comments_options' );
 		delete_option( 'disable_comments_post_types' );
@@ -151,13 +153,4 @@ class SettingsMigrationTest extends WP_UnitTestCase {
 		$this->assertEquals( Disable_Comments::DB_VERSION, $options['db_version'] );
 	}
 
-	// -------------------------------------------------------------------------
-	// Helper
-	// -------------------------------------------------------------------------
-
-	private function reset_singleton() {
-		$reflection = new ReflectionProperty( Disable_Comments::class, 'instance' );
-		$reflection->setAccessible( true );
-		$reflection->setValue( null, null );
-	}
 }

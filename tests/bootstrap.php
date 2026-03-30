@@ -65,3 +65,6 @@ $_dc_prev_handler = set_error_handler(
 		return false;
 	}
 );
+
+// Load shared test helpers.
+require_once __DIR__ . '/helpers/trait-plugin-options.php';

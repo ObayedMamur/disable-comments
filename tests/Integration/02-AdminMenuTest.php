@@ -10,6 +10,8 @@
 
 class AdminMenuTest extends WP_UnitTestCase {
 
+	use PluginOptionsTrait;
+
 	/** @var Disable_Comments */
 	private $plugin;
 
@@ -156,29 +158,4 @@ class AdminMenuTest extends WP_UnitTestCase {
 		$this->assertTrue( $settings_found );
 	}
 
-	// -------------------------------------------------------------------------
-	// Helpers
-	// -------------------------------------------------------------------------
-
-	private function set_options( array $overrides ) {
-		$defaults = array(
-			'db_version'               => Disable_Comments::DB_VERSION,
-			'remove_everywhere'        => false,
-			'disabled_post_types'      => array(),
-			'extra_post_types'         => array(),
-			'allowed_comment_types'    => array(),
-			'show_existing_comments'   => false,
-			'enable_exclude_by_role'   => false,
-			'exclude_by_role'          => array(),
-			'remove_xmlrpc_comments'   => 0,
-			'remove_rest_API_comments' => 0,
-			'sitewide_settings'        => false,
-		);
-		$options = array_merge( $defaults, $overrides );
-		update_option( 'disable_comments_options', $options );
-		$reflection = new ReflectionProperty( Disable_Comments::class, 'instance' );
-		$reflection->setAccessible( true );
-		$reflection->setValue( null, null );
-		$this->plugin = Disable_Comments::get_instance();
-	}
 }
