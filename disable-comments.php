@@ -1225,7 +1225,14 @@ class Disable_Comments {
 
 	public function disable_comments_settings($_args = array()) {
 		$nonce = (isset($_POST['nonce']) ? sanitize_text_field(wp_unslash($_POST['nonce'])) : '');
-		if (($this->is_CLI && !empty($_args)) || wp_verify_nonce($nonce, 'disable_comments_save_settings')) {
+
+		if (!$this->is_CLI) {
+			if (!wp_verify_nonce($nonce, 'disable_comments_save_settings')) {
+				wp_send_json_error(['message' => __('Nonce verification failed.', 'disable-comments')], 403);
+			}
+		}
+
+		if (($this->is_CLI && !empty($_args)) || !$this->is_CLI) {
 
 			$formArray = $this->get_form_array_escaped($_args);
 			$is_network_action = $this->is_CLI
