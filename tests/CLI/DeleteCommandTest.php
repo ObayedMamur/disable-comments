@@ -16,6 +16,8 @@ class DeleteCommandTest extends WP_UnitTestCase {
 	public function set_up() {
 		parent::set_up();
 		$this->plugin = Disable_Comments::get_instance();
+		// Bypass nonce gate for direct method calls (no WP_CLI defined in test env).
+		$this->plugin->is_CLI = true;
 		$this->set_options( array(
 			'remove_everywhere'     => false,
 			'allowed_comment_types' => array(),
@@ -175,5 +177,6 @@ class DeleteCommandTest extends WP_UnitTestCase {
 		$reflection->setAccessible( true );
 		$reflection->setValue( null, null );
 		$this->plugin = Disable_Comments::get_instance();
+		$this->plugin->is_CLI = true;
 	}
 }

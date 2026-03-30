@@ -23,11 +23,11 @@ class HookRegistrationTest extends WP_UnitTestCase {
 	// -------------------------------------------------------------------------
 
 	public function test_constructor_registers_plugins_loaded_hook() {
-		$this->assertNotFalse( has_action( 'plugins_loaded', array( $this->plugin, 'register_text_domain' ) ) );
+		$this->assertNotFalse( has_action( 'plugins_loaded', array( $this->plugin, 'init_filters' ) ) );
 	}
 
 	public function test_constructor_registers_wp_loaded_hooks() {
-		$this->assertNotFalse( has_action( 'wp_loaded', array( $this->plugin, 'init_wploaded_filters' ) ) );
+		$this->assertNotFalse( has_action( 'wp_loaded', array( $this->plugin, 'start_plugin_usage_tracking' ) ) );
 	}
 
 	// -------------------------------------------------------------------------

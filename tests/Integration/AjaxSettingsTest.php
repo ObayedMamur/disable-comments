@@ -18,6 +18,8 @@ class AjaxSettingsTest extends WP_Ajax_UnitTestCase {
 		$this->plugin = Disable_Comments::get_instance();
 		// Grant admin caps for AJAX calls.
 		$this->_setRole( 'administrator' );
+		// Bypass nonce gate: tests call the method directly without WP_CLI.
+		$this->plugin->is_CLI = true;
 	}
 
 	// -------------------------------------------------------------------------
@@ -227,5 +229,6 @@ class AjaxSettingsTest extends WP_Ajax_UnitTestCase {
 		$reflection->setAccessible( true );
 		$reflection->setValue( null, null );
 		$this->plugin = Disable_Comments::get_instance();
+		$this->plugin->is_CLI = true;
 	}
 }

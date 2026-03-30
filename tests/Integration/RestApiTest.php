@@ -64,19 +64,17 @@ class RestApiTest extends WP_Test_REST_TestCase {
 		$this->assertNull( $result );
 	}
 
-	public function test_rest_dispatch_no_block_when_not_remove_everywhere_and_no_rest_flag() {
+	public function test_rest_dispatch_hook_not_registered_when_flags_off() {
 		$this->set_options( array(
 			'remove_everywhere'        => false,
 			'remove_rest_API_comments' => 0,
 		) );
+		// Ensure the hook is not registered after init_filters with flags off.
 		remove_filter( 'rest_pre_dispatch', array( $this->plugin, 'filter_rest_comment_dispatch' ) );
 
-		$request = new WP_REST_Request( 'POST', '/wp/v2/comments' );
+		$this->plugin->init_filters();
 
-		$result = $this->plugin->filter_rest_comment_dispatch( null, rest_get_server(), $request );
-
-		// When flags are off, hook should not be registered — but if called directly, should pass.
-		$this->assertNull( $result );
+		$this->assertFalse( has_filter( 'rest_pre_dispatch', array( $this->plugin, 'filter_rest_comment_dispatch' ) ) );
 	}
 
 	// -------------------------------------------------------------------------

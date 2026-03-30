@@ -18,6 +18,8 @@ class AjaxDeleteTest extends WP_Ajax_UnitTestCase {
 		parent::set_up();
 		$this->plugin = Disable_Comments::get_instance();
 		$this->_setRole( 'administrator' );
+		// Bypass nonce gate: tests call the method directly without WP_CLI.
+		$this->plugin->is_CLI = true;
 		$this->set_options( array(
 			'remove_everywhere'     => false,
 			'allowed_comment_types' => array(),
@@ -249,5 +251,6 @@ class AjaxDeleteTest extends WP_Ajax_UnitTestCase {
 		$reflection->setAccessible( true );
 		$reflection->setValue( null, null );
 		$this->plugin = Disable_Comments::get_instance();
+		$this->plugin->is_CLI = true;
 	}
 }

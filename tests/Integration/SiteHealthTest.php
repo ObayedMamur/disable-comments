@@ -67,7 +67,8 @@ class SiteHealthTest extends WP_UnitTestCase {
 		$fields = $result['disable-comments']['fields'];
 
 		$this->assertArrayHasKey( 'status', $fields );
-		$this->assertStringContainsStringIgnoringCase( 'none', (string) $fields['status']['value'] );
+		// When nothing is disabled, status description says "enabled everywhere".
+		$this->assertStringContainsStringIgnoringCase( 'enabled', (string) $fields['status']['value'] );
 	}
 
 	public function test_site_health_includes_xmlrpc_status_field() {
@@ -76,7 +77,7 @@ class SiteHealthTest extends WP_UnitTestCase {
 		$result = $this->plugin->add_site_health_info( array() );
 		$fields = $result['disable-comments']['fields'];
 
-		$this->assertArrayHasKey( 'xmlrpc', $fields );
+		$this->assertArrayHasKey( 'xmlrpc_comments', $fields );
 	}
 
 	public function test_site_health_includes_rest_api_status_field() {
@@ -85,7 +86,7 @@ class SiteHealthTest extends WP_UnitTestCase {
 		$result = $this->plugin->add_site_health_info( array() );
 		$fields = $result['disable-comments']['fields'];
 
-		$this->assertArrayHasKey( 'rest_api', $fields );
+		$this->assertArrayHasKey( 'rest_api_comments', $fields );
 	}
 
 	// -------------------------------------------------------------------------
