@@ -13,3 +13,4 @@ pnpm-lock.yaml
 .ai/security/
 .claude/worktrees/
 .wp-env.override.json
+.phpunit.result.cache
