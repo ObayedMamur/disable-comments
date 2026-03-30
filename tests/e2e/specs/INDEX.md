@@ -11,10 +11,10 @@ Master index of all E2E test cases. Updated as new test cases are added or autom
 
 | ID | Title | Priority | Type | Status |
 |----|-------|----------|------|--------|
-| [TC-001](01-disable-everywhere/TC-001-enable-remove-everywhere.md) | Enable "Remove Everywhere" mode and verify global comment disable | 🔴 smoke | functional | manual |
-| [TC-002](01-disable-everywhere/TC-002-disable-remove-everywhere.md) | Disable "Remove Everywhere" mode restores comments | 🟠 high | functional | manual |
-| [TC-003](01-disable-everywhere/TC-003-comment-form-absent-posts.md) | Comment form is absent on Posts when globally disabled | 🔴 smoke | functional | manual |
-| [TC-004](01-disable-everywhere/TC-004-comment-form-absent-pages.md) | Comment form is absent on Pages when globally disabled | 🟠 high | functional | manual |
+| [TC-001](01-disable-everywhere/TC-001-remove-everywhere-lifecycle.md) | Remove Everywhere lifecycle: enable, verify disabled (Posts + Pages), restore | 🔴 smoke | functional | automated |
+| ~~TC-002~~ | _(merged into TC-001)_ | — | — | retired |
+| ~~TC-003~~ | _(merged into TC-001)_ | — | — | retired |
+| ~~TC-004~~ | _(merged into TC-001)_ | — | — | retired |
 | [TC-005](01-disable-everywhere/TC-005-comment-count-shows-zero.md) | Comment count returns 0 for all posts when globally disabled | 🟠 high | functional | manual |
 | [TC-006](01-disable-everywhere/TC-006-comment-feed-returns-403.md) | Comment feed URL returns 403 when globally disabled | 🟠 high | functional | manual |
 | [TC-007](01-disable-everywhere/TC-007-x-pingback-header-removed.md) | X-Pingback HTTP header is removed when globally disabled | 🟡 medium | functional | manual |

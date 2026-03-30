@@ -118,6 +118,8 @@ import { wpCli } from '../../utils/wp-cli';
 import { SettingsPage } from '../../page-objects/SettingsPage';
 ```
 
+The `test` fixture from `@wordpress/e2e-test-utils-playwright` automatically provides `admin`, `editor`, `requestUtils`, `page`, and `browser` as fixture arguments — use them directly in your `test()` callback. See **Section 6** for when to use each utility for test data setup.
+
 ### Step 3 — Add the TC annotation
 
 Inside every `test()` block that corresponds to a TC, add:
@@ -187,7 +189,7 @@ Full infrastructure documentation is in [`tests/e2e/README.md`](../README.md). Q
 - **Running tests:** `npm run env:up` then `npm test` from `tests/e2e/`.
 - **Page objects:** `tests/e2e/page-objects/` — e.g. `SettingsPage.ts`. Add page objects here for any admin page you interact with in more than one spec.
 - **Fixtures:** `tests/e2e/utils/fixtures.ts` — exports a `test` that automatically restores the database before every test. Always import from here.
-- **WP-CLI in tests:** `tests/e2e/utils/wp-cli.ts` — use `wpCli()` for test data setup and DB-level verification. Do not use it to change plugin settings during a test.
+- **WP-CLI in tests:** `tests/e2e/utils/wp-cli.ts` — use `wpCli()` for DB-level verification and any operation not available via REST. Do not use it to change plugin settings or to create test content when `requestUtils` can do the same. See **Section 6** for the full decision hierarchy.
 - **Spec files:** Colocated with `.md` files inside `tests/e2e/specs/` feature folders.
 
 ### The three-phase pattern for Playwright specs
@@ -240,7 +242,105 @@ Tests that skip Phase 1 are incomplete — they cannot distinguish between "the 
 
 ---
 
-## 6. File Naming Conventions
+## 6. WordPress Test Utilities
+
+The `@wordpress/e2e-test-utils-playwright` package is already a dev dependency and its fixtures (`requestUtils`, `admin`, `editor`) are available in every test. **Prefer these utilities over raw WP-CLI commands** for creating and managing test content — they are faster (REST, no Docker exec), return typed objects with direct URL access, and cleanly express intent.
+
+### Decision hierarchy for test data setup
+
+| Need | Use |
+|------|-----|
+| Create a post | `requestUtils.createPost()` |
+| Create a page | `requestUtils.createPage()` |
+| Create a comment | `requestUtils.createComment()` |
+| Delete all posts | `requestUtils.deleteAllPosts( postType? )` |
+| Delete all pages | `requestUtils.deleteAllPages()` |
+| Delete all comments | `requestUtils.deleteAllComments( type? )` |
+| Open a new post in the block editor | `admin.createNewPost( options )` |
+| Open an existing post/page in the block editor | `admin.editPost( postId )` |
+| DB-level read/verify, or anything not exposed by REST | `wpCli()` |
+
+**Never use `wpCli()` to change plugin settings** — always drive settings changes through the UI (Phase 2 of the three-phase pattern) so that the test exercises the real save flow.
+
+### Common patterns
+
+**Creating a post:**
+
+```typescript
+const post = await requestUtils.createPost( {
+    title: 'TC-001 Test Post',
+    status: 'publish',
+    date_gmt: new Date().toISOString(),
+} );
+const postUrl = post.link;
+```
+
+`CreatePostPayload` fields: `title?`, `content?`, `status` (required), `date?`, `date_gmt` (required).
+
+**Creating a page:**
+
+```typescript
+const wpPage = await requestUtils.createPage( {
+    title: 'TC-001 Test Page',
+    status: 'publish',
+} );
+const pageUrl = wpPage.link;
+```
+
+`CreatePagePayload` fields: `title?`, `content?`, `status` (required), `date?`, `date_gmt?`.
+
+**Creating a comment:**
+
+```typescript
+await requestUtils.createComment( {
+    post: post.id,
+    content: 'TC-001 test comment',
+} );
+```
+
+`CreateCommentPayload` fields: `content` (required), `post` (required — post ID as number). The author is resolved automatically to the current authenticated user. Do not pass a `status` field — it is not part of the payload type.
+
+**Cleaning up between tests:**
+
+```typescript
+await requestUtils.deleteAllPosts();              // deletes default 'posts'
+await requestUtils.deleteAllPosts( 'pages' );    // or pass a custom post type slug
+await requestUtils.deleteAllPages();
+await requestUtils.deleteAllComments();          // deletes all 'comment' type
+await requestUtils.deleteAllComments( 'ping' );  // optional: filter by comment type
+```
+
+**Opening the block editor for a new post:**
+
+```typescript
+// Only when the test needs to interact with the Gutenberg editor itself
+await admin.createNewPost( { postType: 'post', title: 'Editor Test Post' } );
+// Supported options: postType, title, content, excerpt, showWelcomeGuide, fullscreenMode
+```
+
+**Opening an existing post or page in the block editor:**
+
+```typescript
+// postId comes from a prior requestUtils.createPost() / createPage() call
+await admin.editPost( post.id );
+```
+
+**DB-level verification** (still appropriate; use `wpCli()` here):
+
+```typescript
+const raw = wpCli( 'option get disable_comments_options --format=json' );
+expect( ( JSON.parse( raw ) as Record<string, unknown> ).remove_everywhere ).toBeTruthy();
+```
+
+### Why not always use WP-CLI?
+
+- `wpCli()` is synchronous and blocks the Node process while waiting for Docker exec
+- It returns raw strings that require manual parsing (post ID, URL, etc.)
+- `requestUtils.*` methods are async, return typed objects, and are idiomatic for Playwright-based WordPress testing
+
+---
+
+## 7. File Naming Conventions
 
 Consistent naming makes it possible to automatically pair `.md` files with their `.spec.ts` files.
 
@@ -259,7 +359,7 @@ Rules:
 
 ---
 
-## 7. Pull Request Checklist
+## 8. Pull Request Checklist
 
 When submitting a PR that adds or changes test cases:
 
