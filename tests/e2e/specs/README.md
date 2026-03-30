@@ -8,8 +8,9 @@ End-to-end test cases for the **Disable Comments** WordPress plugin. These tests
 
 This directory contains browser-level end-to-end test cases that verify the Disable Comments plugin from a real user's perspective. Each test case describes a complete scenario: what to set up, what to click, and what to observe.
 
-**Today:** Manual testers follow the Markdown test cases step by step.
-**Tomorrow:** Playwright `.spec.ts` automation files will live colocated with the `.md` files in the same feature folders, sharing the same base filename.
+Test cases exist as Markdown (`.md`) files for human readability and as Playwright (`.spec.ts`) files for automation. Both live colocated in the same feature folder and share the same base filename.
+
+For instructions on running the automated tests, setting up Docker, and the overall infrastructure, see [`tests/e2e/README.md`](../README.md).
 
 ---
 
@@ -124,10 +125,11 @@ Every test case `.md` file begins with a YAML frontmatter block. The fields are:
 2. Open the test case `.md` file you want to execute.
 3. Complete all **Prerequisites** listed at the top of the test case.
 4. Prepare any items listed in **Test Data**.
-5. Follow each row in the **Steps** table — perform the action and verify the expected result before moving to the next step.
-6. Compare the final state against **Expected Results**.
-7. Record pass/fail alongside the TC ID and the WordPress + plugin version tested.
-8. For failures, file a GitHub issue and reference the TC ID in the issue title.
+5. **Verify the initial state first** — before touching any plugin settings, confirm the site behaves as expected in its default state (e.g. the comment form is visible before you disable comments). This is a required step, not optional.
+6. Follow each row in the **Steps** table — perform the action and verify the expected result before moving to the next step.
+7. Compare the final state against **Expected Results**.
+8. Record pass/fail alongside the TC ID and the WordPress + plugin version tested.
+9. For failures, file a GitHub issue and reference the TC ID in the issue title.
 
 ---
 
@@ -135,10 +137,12 @@ Every test case `.md` file begins with a YAML frontmatter block. The fields are:
 
 1. Create a `.spec.ts` file **in the same folder** as the `.md` file, with the same base name.
    - Example: `TC-001-global-disable-enable.md` → `TC-001-global-disable-enable.spec.ts`
-2. Add the TC annotation inside your test: `test.info().annotations.push({ type: 'TC', value: 'TC-001' })`
-3. Name `describe` blocks to match the feature folder name; name `test` blocks to match the TC title.
-4. Update the markdown frontmatter:
+2. Import `test` and `expect` from `../../utils/fixtures` (not from Playwright directly) — this activates the per-test DB restore.
+3. Add the TC annotation inside your test: `test.info().annotations.push({ type: 'TC', value: 'TC-001' })`
+4. Name `describe` blocks to match the feature folder name; name `test` blocks to match the TC title.
+5. Follow the **three-phase testing pattern** — every spec must verify the initial state, perform the action through the UI, then verify the final state. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for details.
+6. Update the markdown frontmatter:
    - `automation_status: automated`
-   - `automation_file: tests/e2e/specs/01-disable-everywhere/TC-001-global-disable-enable.spec.ts`
-5. Update the **automation_status** column in `INDEX.md` for that row.
-6. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for full guidance, naming conventions, and project setup details.
+   - `automation_file: "[TC-001-global-disable-enable.spec.ts](TC-001-global-disable-enable.spec.ts)"` — use a Markdown link (just the filename) so it renders as a clickable link in preview
+7. Update the **automation_status** column in `INDEX.md` for that row.
+8. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for full guidance, naming conventions, and the testing pattern.

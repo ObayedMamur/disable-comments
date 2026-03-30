@@ -52,6 +52,26 @@ Each test case must be runnable by a tester who has never seen the feature befor
 - **Steps** must be atomic — one action per row, one expected result per row. Never bundle "click X, then Y, then check Z" into a single row.
 - **Expected Results** are the final acceptance criteria — what must be true after all steps complete.
 
+#### Required: verify the initial state
+
+Every test that modifies plugin settings **must begin by verifying the initial state**. Before the tester (or Playwright) touches any setting, the steps must confirm:
+
+1. The plugin settings are in the expected starting state (e.g. "Remove Everywhere" is NOT checked)
+2. The frontend behaves as expected before the change (e.g. the comment form IS visible)
+
+This makes it immediately obvious when a test runs in a dirty environment and prevents a false positive where a setting was already active before the test began.
+
+Example steps table structure:
+
+| # | Action | Expected Result |
+|---|--------|----------------|
+| 1 | (Setup) Create a test Post with comments open | Post exists and URL is known |
+| 2 | Verify initial settings state: navigate to settings page | "Remove Everywhere" radio is NOT selected |
+| 3 | Verify initial frontend state: navigate to the test post | `#respond` comment form IS visible on the page |
+| 4 | Select "Remove Everywhere" and click Save | Success notification appears |
+| 5 | Reload the settings page | "Remove Everywhere" radio remains selected |
+| 6 | Navigate to the test post | `#respond` is absent from the DOM |
+
 ### Step 6 — Update INDEX.md
 
 Add a row for the new test case in `INDEX.md`. Fill in the ID, title, feature, priority, type, and automation_status columns.
@@ -62,6 +82,7 @@ Add a row for the new test case in `INDEX.md`. Fill in the ID, title, feature, p
 
 Before submitting a PR with a new or modified test case, verify:
 
+- [ ] Steps begin by **verifying the initial state** — settings are confirmed before any change is made, and the frontend is checked to behave as expected before the plugin action is taken
 - [ ] Steps are **atomic** — each row has exactly one action and one observable expected result
 - [ ] Prerequisites are **complete** — the test can be run in isolation without referring to other test cases
 - [ ] Test data is **explicit** — no vague references like "some post" or "a user"; all data has exact values
@@ -87,18 +108,28 @@ tests/e2e/specs/01-disable-everywhere/
 └── TC-001-global-disable-enable.spec.ts   ← new file
 ```
 
-### Step 2 — Add the TC annotation
+### Step 2 — Use the correct imports
+
+Always import `test` and `expect` from the fixtures utility, not from Playwright or the WP utils package directly. This activates the automatic per-test DB restore.
+
+```typescript
+import { test, expect } from '../../utils/fixtures';
+import { wpCli } from '../../utils/wp-cli';
+import { SettingsPage } from '../../page-objects/SettingsPage';
+```
+
+### Step 3 — Add the TC annotation
 
 Inside every `test()` block that corresponds to a TC, add:
 
 ```typescript
-test('TC-001 — Global disable hides comment form on single post', async ({ page }) => {
+test('TC-001 — Global disable hides comment form on single post', async ({ page, admin }) => {
   test.info().annotations.push({ type: 'TC', value: 'TC-001' });
   // ...
 });
 ```
 
-### Step 3 — Match naming conventions
+### Step 4 — Match naming conventions
 
 - Wrap tests in a `describe` block named after the **feature folder** (without number prefix):
 
@@ -108,18 +139,24 @@ test('TC-001 — Global disable hides comment form on single post', async ({ pag
 
 - Name individual `test` blocks to **match the TC title** exactly.
 
-### Step 4 — Update the markdown frontmatter
+### Step 5 — Follow the three-phase pattern
+
+Every spec must verify the initial state, perform the action through the UI, then verify the final state. See **Section 5** for the full pattern with code examples. Tests that skip the initial-state phase are considered incomplete and will not be merged.
+
+### Step 6 — Update the markdown frontmatter
 
 Once the spec file exists and is passing, open the `.md` file and update:
 
 ```yaml
 automation_status: automated
-automation_file: "tests/e2e/specs/01-disable-everywhere/TC-001-global-disable-enable.spec.ts"
+automation_file: "[TC-001-global-disable-enable.spec.ts](TC-001-global-disable-enable.spec.ts)"
 ```
+
+Use a Markdown link with just the filename as both the label and the relative path. Because the `.md` and `.spec.ts` files sit in the same folder, the relative link resolves correctly in any Markdown previewer, making the spec file directly clickable.
 
 Set `updated` to today's date.
 
-### Step 5 — Update INDEX.md
+### Step 7 — Update INDEX.md
 
 Change the `automation_status` column for that row from `manual` to `automated`.
 
@@ -144,15 +181,62 @@ Use these questions to assign the correct priority:
 
 ## 5. Playwright Project Setup
 
-Full Playwright configuration lives at `tests/e2e/playwright.config.ts`. Key decisions when that is set up:
+Full infrastructure documentation is in [`tests/e2e/README.md`](../README.md). Quick reference for test authors:
 
-- **WordPress environment:** Will use `@wordpress/env` (or a compatible local Docker setup) to spin up a clean WordPress instance for each test run.
-- **Page objects:** Will live in `tests/e2e/page-objects/` (e.g. `SettingsPage.ts`, `DeletePage.ts`). Page objects encapsulate selectors and common interactions so spec files stay readable.
-- **Fixtures:** Will live in `tests/e2e/fixtures/`. Fixtures handle shared setup like logging in as admin, creating test posts, and resetting plugin settings between tests.
+- **WordPress environment:** Docker Compose with MariaDB + WordPress + WP-CLI containers. The plugin repo root is bind-mounted directly — no ZIP build required.
+- **Running tests:** `npm run env:up` then `npm test` from `tests/e2e/`.
+- **Page objects:** `tests/e2e/page-objects/` — e.g. `SettingsPage.ts`. Add page objects here for any admin page you interact with in more than one spec.
+- **Fixtures:** `tests/e2e/utils/fixtures.ts` — exports a `test` that automatically restores the database before every test. Always import from here.
+- **WP-CLI in tests:** `tests/e2e/utils/wp-cli.ts` — use `wpCli()` for test data setup and DB-level verification. Do not use it to change plugin settings during a test.
 - **Spec files:** Colocated with `.md` files inside `tests/e2e/specs/` feature folders.
-- **CI:** Playwright tests will run in GitHub Actions on pull requests targeting `master`, after PHPUnit tests pass.
 
-Until the Playwright config is in place, write spec files so they can be picked up by a standard `playwright.config.ts` that sets `testDir: 'tests/e2e/specs'` and `testMatch: '**/*.spec.ts'`.
+### The three-phase pattern for Playwright specs
+
+Every spec that changes plugin settings **must** follow these three phases:
+
+**Phase 1 — Verify the initial state**
+
+Confirm that settings and the frontend are in the expected state _before_ any change is made. Never assume the environment is clean just because the DB was restored; assert it.
+
+```typescript
+// Settings are in the expected starting state
+await settings.navigate();
+await expect(settings.removeEverywhereRadio).not.toBeChecked();
+
+// Frontend behaves as expected before the change
+await page.goto(postUrl);
+await expect(page.locator('#respond')).toBeVisible(); // comment form IS present
+```
+
+**Phase 2 — Perform the action through the UI**
+
+Change plugin settings exactly as a real user would. Use the settings page, click buttons, and save. **Do not use `wpCli()` to change plugin settings** — reserve it for data setup and verification.
+
+```typescript
+await settings.navigate();
+await settings.selectRemoveEverywhere();
+await settings.saveAndWaitForSuccess();
+```
+
+**Phase 3 — Verify the final state**
+
+After saving, confirm both that the setting persisted and that the frontend reflects the change.
+
+```typescript
+// Settings persisted after reload
+await page.reload();
+await expect(settings.removeEverywhereRadio).toBeChecked();
+
+// Frontend reflects the change
+await page.goto(postUrl);
+await expect(page.locator('#respond')).not.toBeAttached();
+
+// (Optional) Confirm at DB level
+const raw = wpCli('option get disable_comments_options --format=json');
+expect(JSON.parse(raw).remove_everywhere).toBeTruthy();
+```
+
+Tests that skip Phase 1 are incomplete — they cannot distinguish between "the feature worked correctly" and "the feature was already in that state before the test ran".
 
 ---
 
@@ -182,6 +266,8 @@ When submitting a PR that adds or changes test cases:
 - [ ] New `.md` files follow the naming convention and are in the correct folder
 - [ ] All frontmatter fields are populated with real values (no template placeholders)
 - [ ] `INDEX.md` is updated
+- [ ] If a spec file was added: it imports `test` and `expect` from `../../utils/fixtures`
+- [ ] If a spec file was added: it follows the three-phase pattern (verify initial state → UI action → verify final state)
 - [ ] If a spec file was added: frontmatter `automation_status` and `automation_file` are updated
-- [ ] If a spec file was added: the spec passes locally against a clean WordPress environment
+- [ ] If a spec file was added: the spec passes locally against a clean WordPress environment (`npm run env:reset && npm test`)
 - [ ] No existing TC IDs were reused or renumbered

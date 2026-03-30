@@ -5,8 +5,8 @@ feature: disable-everywhere
 priority: high
 tags: [disable-everywhere, settings, frontend, restore]
 type: functional
-automation_status: manual
-automation_file: ""
+automation_status: automated
+automation_file: "[TC-002-disable-remove-everywhere.spec.ts](TC-002-disable-remove-everywhere.spec.ts)"
 created: 2026-03-30
 updated: 2026-03-30
 ---
@@ -20,9 +20,9 @@ Verifies that switching from "Remove Everywhere" back to "Disable by Post Type" 
 - [ ] WordPress site is running (local or staging)
 - [ ] Disable Comments plugin is activated
 - [ ] Logged in as Administrator
-- [ ] "Remove Everywhere" mode is currently ACTIVE (from a prior save or TC-001)
-- [ ] At least one published Post exists with comments enabled at the post level
-- [ ] The test Post's WordPress-level comment status is set to "Open" (not closed individually)
+- [ ] Plugin is in a clean/default state (Remove Everywhere is NOT currently active)
+- [ ] Test creates its own Post with comments open via WP-CLI
+- [ ] "Remove Everywhere" is enabled mid-test via UI before being reversed
 
 ## Test Data
 
@@ -37,17 +37,19 @@ Verifies that switching from "Remove Everywhere" back to "Disable by Post Type" 
 
 | # | Action | Expected Result |
 |---|--------|----------------|
-| 1 | Navigate to `/wp-admin/admin.php?page=disable_comments_settings` | Settings page loads; "Remove Everywhere" radio is currently selected (confirming prerequisite) |
-| 2 | Navigate to the test Post frontend URL (e.g. `/hello-world/`) in a new tab | Post page loads; confirm the comment form is currently ABSENT (verifying Remove Everywhere is active) |
-| 3 | Return to the settings page tab | Settings page is shown with "Remove Everywhere" selected |
-| 4 | Click the "Disable by Post Type" radio button | The radio selection switches to "Disable by Post Type"; post type checkboxes become visible/enabled |
-| 5 | Ensure no post type checkboxes are checked (deselect all if any are pre-checked) | All post type checkboxes are unchecked; no post types are targeted for disabling |
-| 6 | Click the "Save Changes" button | An AJAX POST is sent to `admin-ajax.php`; a success notification appears confirming the settings were saved |
-| 7 | Dismiss the success notification | Notification closes; page remains on settings |
-| 8 | Reload the settings page | Page reloads; "Disable by Post Type" radio is still selected; no post type checkboxes are checked |
-| 9 | Navigate to the test Post frontend URL (e.g. `/hello-world/`) | Post page loads |
-| 10 | Scroll to the bottom of the post | The `#respond` div IS present in the DOM; the "Leave a Reply" heading is visible; the comment form with textarea and submit button is rendered |
-| 11 | Verify the comment form is functional: inspect the form `action` attribute | The form action points to the site's `wp-comments-post.php` endpoint (standard WP comment submission) |
+| 1 | (Setup) Create a test Post with `comment_status=open` via WP-CLI | Post exists and its URL is known |
+| 2 | Navigate to `/wp-admin/admin.php?page=disable_comments_settings` | Settings page loads; "Remove Everywhere" radio is NOT selected (clean state confirmed) |
+| 3 | Navigate to the test Post frontend URL | Post page loads; `#respond`, `h3#reply-title`, and `#comment` are visible (comment form present) |
+| 4 | Return to settings; click "Remove Everywhere" and click "Save Changes" | SweetAlert success popup appears; setting saved |
+| 5 | Navigate to the test Post frontend URL | `#respond` is completely absent from the DOM (Remove Everywhere now active — prerequisite state confirmed) |
+| 6 | Return to settings; confirm "Remove Everywhere" radio is selected | Radio is checked |
+| 7 | Click the "Disable by Post Type" radio button | Radio selection switches to "Disable by Post Type"; post-type checkboxes become visible |
+| 8 | Ensure no post type checkboxes are checked (deselect all if any are pre-checked) | All post type checkboxes are unchecked |
+| 9 | Click the "Save Changes" button | SweetAlert success popup appears; setting saved |
+| 10 | Reload the settings page | "Disable by Post Type" radio is still selected; no post type checkboxes are checked |
+| 11 | Navigate to the test Post frontend URL | `#respond` IS present; "Leave a Reply" heading, `#comment`, and `#submit` are visible |
+| 12 | Inspect the comment form's `action` attribute | Form action contains `wp-comments-post.php` |
+| 13 | (Verify) Run `wp option get disable_comments_options --format=json` | `remove_everywhere` is `false` or falsy in the stored options |
 
 ## Expected Results
 - After switching to "Disable by Post Type" with no types checked and saving, the frontend Post shows the full comment form

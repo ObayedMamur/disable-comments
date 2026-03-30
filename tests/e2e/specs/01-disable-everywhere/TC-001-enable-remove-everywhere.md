@@ -5,8 +5,8 @@ feature: disable-everywhere
 priority: smoke
 tags: [disable-everywhere, settings, frontend, smoke]
 type: functional
-automation_status: manual
-automation_file: ""
+automation_status: automated
+automation_file: "[TC-001-enable-remove-everywhere.spec.ts](TC-001-enable-remove-everywhere.spec.ts)"
 created: 2026-03-30
 updated: 2026-03-30
 ---
@@ -20,9 +20,8 @@ Verifies that selecting the "Remove Everywhere" radio option and saving the sett
 - [ ] WordPress site is running (local or staging)
 - [ ] Disable Comments plugin is activated
 - [ ] Logged in as Administrator
-- [ ] At least one published Post exists (e.g. "Hello World" or a known test post)
-- [ ] At least one published Page exists
 - [ ] Plugin is in a clean/default state (Remove Everywhere is NOT currently active)
+- [ ] Test creates its own Post and Page with comments open via WP-CLI
 
 ## Test Data
 
@@ -38,18 +37,15 @@ Verifies that selecting the "Remove Everywhere" radio option and saving the sett
 
 | # | Action | Expected Result |
 |---|--------|----------------|
-| 1 | Navigate to `/wp-admin/admin.php?page=disable_comments_settings` | Settings page loads; the "Disable" tab is active by default |
-| 2 | Confirm the current state: note which radio is selected (should NOT be "Remove Everywhere" for a clean state) | "Disable by Post Type" or no selection is active; the "Remove Everywhere" radio is not selected |
-| 3 | Click the "Remove Everywhere" radio button | The radio button becomes selected; "Disable by Post Type" section (post type checkboxes) collapses or becomes inactive |
-| 4 | Click the "Save Changes" button | An AJAX POST is sent to `admin-ajax.php` with action `disable_comments_save_settings`; a success notification appears (SweetAlert dialog or inline message confirming save) |
-| 5 | Dismiss the success notification (if modal) | Notification closes; settings page remains displayed |
-| 6 | Reload the settings page (`/wp-admin/admin.php?page=disable_comments_settings`) | Page reloads cleanly |
-| 7 | Verify the "Remove Everywhere" radio is still selected after reload | The "Remove Everywhere" radio option is checked; setting has persisted correctly |
-| 8 | In a new tab or after logging out, navigate to a published Post frontend URL (e.g. `/hello-world/`) | Post page loads successfully |
-| 9 | Scroll to the bottom of the post page and inspect the comments section | The `#respond` div and `#comment-form` are NOT present in the DOM; no "Leave a Reply" heading or comment text field is visible |
-| 10 | Navigate to a published Page frontend URL (e.g. `/sample-page/`) | Page loads successfully |
-| 11 | Scroll to the bottom of the page and inspect the comments section | The `#respond` div is NOT present in the DOM; no comment form elements are visible on the page |
-| 12 | Return to the settings page and confirm `remove_everywhere` value in the DB (optional: via WP-CLI `wp option get disable_comments_options`) | `remove_everywhere` is `true` (or `1`) in the stored options array |
+| 1 | (Setup) Create a test Post and a test Page with `comment_status=open` via WP-CLI | Post and Page exist and their URLs are known |
+| 2 | Navigate to `/wp-admin/admin.php?page=disable_comments_settings` | Settings page loads; the "Remove Everywhere" radio is NOT selected (clean state confirmed) |
+| 3 | Navigate to the test Post's frontend URL | Post page loads; `#respond` and `#comment` are visible in the DOM (comment form present) |
+| 4 | Return to settings; click the "Remove Everywhere" radio button | The radio becomes selected; the post-type checkboxes section collapses or becomes inactive |
+| 5 | Click the "Save Changes" button | AJAX POST sent; SweetAlert success popup appears and auto-dismisses after 3 s |
+| 6 | Reload the settings page | "Remove Everywhere" radio is still selected — setting persisted correctly |
+| 7 | Navigate to the test Post frontend URL | `#respond` and `#comment-form` are completely absent from the DOM (not hidden — absent) |
+| 8 | Navigate to the test Page frontend URL | `#respond` is completely absent from the DOM |
+| 9 | (Verify) Run `wp option get disable_comments_options --format=json` | `remove_everywhere` is `true` (or truthy) in the stored options |
 
 ## Expected Results
 - The "Remove Everywhere" radio button is selected and persists after page reload

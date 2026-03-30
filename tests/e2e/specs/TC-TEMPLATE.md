@@ -35,9 +35,10 @@ type: functional | negative | edge-case | integration
 # automated   = spec file exists and is passing in CI
 automation_status: manual
 
-# Path to the Playwright spec file, relative to the repo root.
+# Link to the Playwright spec file. Use a Markdown link with just the filename
+# so it renders as a clickable link in preview (the .md and .spec.ts are colocated).
 # Leave as empty string ("") until the test is automated.
-# Example: "tests/e2e/specs/01-disable-everywhere/TC-001-global-disable-enable.spec.ts"
+# Example: "[TC-001-global-disable-enable.spec.ts](TC-001-global-disable-enable.spec.ts)"
 automation_file: ""
 
 # ISO 8601 date this test case was first created.

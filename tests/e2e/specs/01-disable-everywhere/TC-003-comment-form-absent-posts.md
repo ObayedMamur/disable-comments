@@ -5,8 +5,8 @@ feature: disable-everywhere
 priority: smoke
 tags: [disable-everywhere, frontend, posts, comment-form, smoke]
 type: functional
-automation_status: manual
-automation_file: ""
+automation_status: automated
+automation_file: "[TC-003-comment-form-absent-posts.spec.ts](TC-003-comment-form-absent-posts.spec.ts)"
 created: 2026-03-30
 updated: 2026-03-30
 ---
@@ -20,9 +20,10 @@ Frontend verification that a single Post does not render the comment form or "Le
 - [ ] WordPress site is running (local or staging)
 - [ ] Disable Comments plugin is activated
 - [ ] Logged in as Administrator
-- [ ] "Remove Everywhere" mode is currently ACTIVE
-- [ ] At least one published Post exists with its individual comment status set to "Open"
-- [ ] The Post's WordPress theme supports comment display (uses `comments_template()`)
+- [ ] Plugin is in a clean/default state (Remove Everywhere is NOT currently active)
+- [ ] Test creates its own Post with comments open via WP-CLI
+- [ ] "Remove Everywhere" is enabled mid-test via UI
+- [ ] The WordPress theme supports comment display (uses `comments_template()`)
 
 ## Test Data
 
@@ -37,16 +38,16 @@ Frontend verification that a single Post does not render the comment form or "Le
 
 | # | Action | Expected Result |
 |---|--------|----------------|
-| 1 | Confirm Remove Everywhere is active: navigate to `/wp-admin/admin.php?page=disable_comments_settings` | Settings page shows "Remove Everywhere" radio as selected |
-| 2 | Open the WordPress admin post list at `/wp-admin/edit.php` | Post list is displayed with at least one published post |
-| 3 | Note the ID or permalink of a published test post (e.g. "Hello World", ID=1) | Post URL is identified (e.g. `/?p=1` or `/hello-world/`) |
-| 4 | Navigate to the test post's frontend URL in a new browser tab (visit as logged-out visitor or use a private/incognito window) | Post page loads with full content displayed; HTTP status 200 |
-| 5 | Scroll to the bottom of the post content area | The area below the post content shows no comment form and no "Leave a Reply" heading |
-| 6 | Use browser DevTools (Inspect) to search the DOM for `#respond` | The `#respond` element does NOT exist in the DOM (not present, not hidden) |
-| 7 | Use browser DevTools to search the DOM for `#comment-form` or `form.comment-form` | No comment form element exists in the DOM |
-| 8 | Use browser DevTools to search the DOM for `h3#reply-title` or any heading containing "Leave a Reply" | No such heading exists in the DOM |
-| 9 | Open browser DevTools Network tab, reload the page, and filter scripts for `comment-reply` | The `comment-reply.js` WordPress script is NOT loaded in the page's network requests |
-| 10 | Check the page source (Ctrl+U or View Source) for the string `id="respond"` | The string `id="respond"` does not appear anywhere in the page HTML source |
+| 1 | (Setup) Create a test Post with `comment_status=open` via WP-CLI | Post exists and its URL is known |
+| 2 | Navigate to `/wp-admin/admin.php?page=disable_comments_settings` | Settings page loads; "Remove Everywhere" radio is NOT selected (clean state confirmed) |
+| 3 | Open the test post URL in a fresh (logged-out) browser context | Post page loads; `#respond` and `#comment` are visible — comment form IS present |
+| 4 | Return to settings; click the "Remove Everywhere" radio and click "Save Changes" | SweetAlert success popup appears; setting saved |
+| 5 | Open the test post URL again in a fresh (logged-out) browser context | Post page loads |
+| 6 | Inspect the DOM for `#respond` | `#respond` does NOT exist in the DOM (not present, not hidden) |
+| 7 | Inspect the DOM for `#comment-form` or `form.comment-form` | No comment form element exists in the DOM |
+| 8 | Inspect the DOM for `h3#reply-title` | No "Leave a Reply" heading exists in the DOM |
+| 9 | Check the page for `script[src*="comment-reply"]` | `comment-reply.js` is NOT loaded |
+| 10 | Read the full page source | The string `id="respond"` does not appear anywhere in the HTML source |
 
 ## Expected Results
 - The `#respond` div is completely absent from the DOM (not merely hidden with CSS)
