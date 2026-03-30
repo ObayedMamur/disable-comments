@@ -31,16 +31,12 @@ function _manually_load_plugin() {
 }
 tests_add_filter( 'muplugins_loaded', '_manually_load_plugin' );
 
-// wp-env always generates wp-tests-config.php with MULTISITE=true (even when
-// .wp-env.json says multisite:false) because the tests environment defaults to
-// multisite for broad compatibility.  WordPress multisite fails when the domain
-// contains a port (e.g. localhost:8890) — get_site_by_path() strips the port
-// but wp_blogs.domain stores it, so the site is never found.
-//
-// PHP's define() silently ignores a re-definition, so defining MULTISITE=false
-// HERE (before bootstrap.php loads wp-tests-config.php) pins it to single-site
-// mode.  Multisite-specific tests in tests/Integration/Multisite/ already call
-// markTestSkipped() when is_multisite() is false, so they are safe to skip.
+// wp-phpunit's install.php populates wp_sitemeta before populate_network() runs,
+// causing populate_network() to bail ("Network already installed."), leaving wp_blogs
+// empty. WordPress 6.x ms-settings.php then crashes in PHP 8.2 with a fatal Error
+// when trying to set properties on false ($current_blog). Pre-define MULTISITE=false
+// here to pin the test runner to single-site mode. Multisite-specific tests call
+// markTestSkipped() when is_multisite() is false.
 if ( ! defined( 'MULTISITE' ) ) {
 	define( 'MULTISITE', false );
 }

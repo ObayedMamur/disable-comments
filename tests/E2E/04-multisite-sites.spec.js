@@ -6,9 +6,7 @@
  * sites list element is present on the settings page.
  */
 const { test, expect } = require( '@playwright/test' );
-
-const BASE_URL     = process.env.WP_BASE_URL || 'http://localhost:8888';
-const SETTINGS_URL = `${ BASE_URL }/wp-admin/options-general.php?page=disable_comments_settings`;
+const { SETTINGS_URL } = require( './helpers/wp-urls' );
 
 test.describe( 'Multisite — site selection', () => {
 	test.beforeEach( async ( { page } ) => {

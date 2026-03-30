@@ -6,9 +6,7 @@
  * form state (delete button active/inactive), success/error responses.
  */
 const { test, expect } = require( '@playwright/test' );
-
-const BASE_URL    = process.env.WP_BASE_URL || 'http://localhost:8888';
-const DELETE_URL  = `${ BASE_URL }/wp-admin/options-general.php?page=disable_comments_settings#delete`;
+const { DELETE_URL } = require( './helpers/wp-urls' );
 
 test.describe( 'Delete page', () => {
 	test.beforeEach( async ( { page } ) => {

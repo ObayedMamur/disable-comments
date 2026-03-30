@@ -6,9 +6,7 @@
  * comments even when comments are globally disabled.
  */
 const { test, expect, request } = require( '@playwright/test' );
-
-const BASE_URL     = process.env.WP_BASE_URL || 'http://localhost:8888';
-const SETTINGS_URL = `${ BASE_URL }/wp-admin/options-general.php?page=disable_comments_settings`;
+const { BASE_URL, SETTINGS_URL } = require( './helpers/wp-urls' );
 
 test.describe( 'Role exclusion — admin UI', () => {
 	test.beforeEach( async ( { page } ) => {

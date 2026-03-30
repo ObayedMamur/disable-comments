@@ -2,7 +2,7 @@
   "core": "WordPress/WordPress#6.9.4",
   "plugins": [ "." ],
   "phpVersion": "8.2",
-  "multisite": false,
+  "multisite": true,
   "port": 8890,
   "testsPort": 8891,
   "config": {
@@ -11,6 +11,6 @@
     "SCRIPT_DEBUG": true
   },
   "lifecycleScripts": {
-    "afterStart": "wp-env run cli wp rewrite flush"
+    "afterStart": "wp-env run cli wp rewrite flush && wp-env run tests-cli wp --skip-plugins --skip-themes --url=http://localhost:8891 db query \"INSERT INTO wp_blogs (blog_id,site_id,domain,path,registered,last_updated,public,archived,mature,spam,deleted,lang_id) VALUES (1,1,'localhost:8891','/',NOW(),NOW(),1,0,0,0,0,0) ON DUPLICATE KEY UPDATE blog_id=1\""
   }
 }

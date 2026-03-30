@@ -9,7 +9,7 @@ module.exports = defineConfig( {
 	workers: 1, // wp-env is single-instance; run serially
 
 	use: {
-		baseURL: process.env.WP_BASE_URL || 'http://localhost:8888',
+		baseURL: process.env.WP_BASE_URL || 'http://localhost:8890',
 		storageState: 'tests/E2E/.auth/admin.json',
 		screenshot: 'only-on-failure',
 		video: 'retain-on-failure',
@@ -19,7 +19,7 @@ module.exports = defineConfig( {
 	projects: [
 		{
 			name: 'setup',
-			testMatch: '**/global-setup.js',
+			testMatch: '**/helpers/global-setup.js',
 		},
 		{
 			name: 'chromium',

@@ -6,10 +6,10 @@ const { chromium } = require( '@playwright/test' );
 const path = require( 'path' );
 const fs   = require( 'fs' );
 
-const BASE_URL  = process.env.WP_BASE_URL  || 'http://localhost:8888';
-const WP_USER   = process.env.WP_USERNAME  || 'admin';
-const WP_PASS   = process.env.WP_PASSWORD  || 'password';
-const AUTH_FILE = path.join( __dirname, '.auth', 'admin.json' );
+const { BASE_URL } = require( './wp-urls' );
+const WP_USER   = process.env.WP_USERNAME || 'admin';
+const WP_PASS   = process.env.WP_PASSWORD || 'password';
+const AUTH_FILE = path.join( __dirname, '..', '.auth', 'admin.json' );
 
 module.exports = async function globalSetup() {
 	fs.mkdirSync( path.dirname( AUTH_FILE ), { recursive: true } );

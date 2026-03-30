@@ -7,9 +7,7 @@
  * form dirty detection (save button state).
  */
 const { test, expect } = require( '@playwright/test' );
-
-const BASE_URL     = process.env.WP_BASE_URL || 'http://localhost:8888';
-const SETTINGS_URL = `${ BASE_URL }/wp-admin/options-general.php?page=disable_comments_settings`;
+const { SETTINGS_URL } = require( './helpers/wp-urls' );
 
 test.describe( 'Settings page — remove everywhere', () => {
 	test.beforeEach( async ( { page } ) => {
