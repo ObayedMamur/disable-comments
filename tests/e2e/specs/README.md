@@ -26,7 +26,7 @@ This suite uses **Hybrid: Feature Folders + Metadata Frontmatter**.
 ## Folder Structure
 
 ```
-tests/e2e/
+tests/e2e/specs/
 ├── README.md                   # This file
 ├── INDEX.md                    # Master list of all test cases
 ├── TC-TEMPLATE.md              # Blank template for new test cases
@@ -101,7 +101,7 @@ Every test case `.md` file begins with a YAML frontmatter block. The fields are:
 | `tags` | list | Free-form tags for cross-cutting filtering, e.g. `[rest-api, permissions]`. |
 | `type` | enum | `functional`, `negative`, `edge-case`, or `integration`. |
 | `automation_status` | enum | `manual` (not yet automated), `in-progress` (being written), or `automated` (spec file exists and passing). |
-| `automation_file` | string | Relative path to the `.spec.ts` file, e.g. `tests/e2e/01-disable-everywhere/TC-001-global-disable-enable.spec.ts`. Empty string if not automated. |
+| `automation_file` | string | Relative path to the `.spec.ts` file, e.g. `tests/e2e/specs/01-disable-everywhere/TC-001-global-disable-enable.spec.ts`. Empty string if not automated. |
 | `created` | date | ISO 8601 date the test case was first written. |
 | `updated` | date | ISO 8601 date the test case was last modified. |
 
@@ -139,6 +139,6 @@ Every test case `.md` file begins with a YAML frontmatter block. The fields are:
 3. Name `describe` blocks to match the feature folder name; name `test` blocks to match the TC title.
 4. Update the markdown frontmatter:
    - `automation_status: automated`
-   - `automation_file: tests/e2e/01-disable-everywhere/TC-001-global-disable-enable.spec.ts`
+   - `automation_file: tests/e2e/specs/01-disable-everywhere/TC-001-global-disable-enable.spec.ts`
 5. Update the **automation_status** column in `INDEX.md` for that row.
 6. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for full guidance, naming conventions, and project setup details.

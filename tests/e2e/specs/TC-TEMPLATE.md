@@ -1,6 +1,6 @@
 ---
 # Unique test case ID. Use the next available ID in this feature folder's reserved range.
-# See tests/e2e/README.md for the ID range table. Never reuse a retired ID.
+# See tests/e2e/specs/README.md for the ID range table. Never reuse a retired ID.
 id: TC-XXX
 
 # Short, imperative title: what is being verified (not how).
@@ -37,7 +37,7 @@ automation_status: manual
 
 # Path to the Playwright spec file, relative to the repo root.
 # Leave as empty string ("") until the test is automated.
-# Example: "tests/e2e/01-disable-everywhere/TC-001-global-disable-enable.spec.ts"
+# Example: "tests/e2e/specs/01-disable-everywhere/TC-001-global-disable-enable.spec.ts"
 automation_file: ""
 
 # ISO 8601 date this test case was first created.

@@ -19,7 +19,7 @@ Each folder has a reserved ID range (e.g. `01-disable-everywhere` owns TC-001 to
 ### Step 3 — Copy and rename the template
 
 ```bash
-cp tests/e2e/TC-TEMPLATE.md tests/e2e/NN-feature-folder/TC-XXX-kebab-case-title.md
+cp tests/e2e/specs/TC-TEMPLATE.md tests/e2e/specs/NN-feature-folder/TC-XXX-kebab-case-title.md
 ```
 
 File name rules:
@@ -82,7 +82,7 @@ When you are ready to write a Playwright spec for an existing manual test case:
 Create the `.spec.ts` file **in the same folder** as the `.md` file, with the same base name:
 
 ```
-tests/e2e/01-disable-everywhere/
+tests/e2e/specs/01-disable-everywhere/
 ├── TC-001-global-disable-enable.md
 └── TC-001-global-disable-enable.spec.ts   ← new file
 ```
@@ -114,7 +114,7 @@ Once the spec file exists and is passing, open the `.md` file and update:
 
 ```yaml
 automation_status: automated
-automation_file: "tests/e2e/01-disable-everywhere/TC-001-global-disable-enable.spec.ts"
+automation_file: "tests/e2e/specs/01-disable-everywhere/TC-001-global-disable-enable.spec.ts"
 ```
 
 Set `updated` to today's date.
@@ -144,15 +144,15 @@ Use these questions to assign the correct priority:
 
 ## 5. Playwright Project Setup
 
-Full Playwright configuration is planned for `tests/playwright/playwright.config.ts`. Key decisions when that is set up:
+Full Playwright configuration lives at `tests/e2e/playwright.config.ts`. Key decisions when that is set up:
 
 - **WordPress environment:** Will use `@wordpress/env` (or a compatible local Docker setup) to spin up a clean WordPress instance for each test run.
-- **Page objects:** Will live in `tests/playwright/page-objects/` (e.g. `SettingsPage.ts`, `DeletePage.ts`). Page objects encapsulate selectors and common interactions so spec files stay readable.
-- **Fixtures:** Will live in `tests/playwright/fixtures/`. Fixtures handle shared setup like logging in as admin, creating test posts, and resetting plugin settings between tests.
-- **Spec files:** Colocated with `.md` files inside `tests/e2e/` feature folders — not in a separate `playwright/` directory.
+- **Page objects:** Will live in `tests/e2e/page-objects/` (e.g. `SettingsPage.ts`, `DeletePage.ts`). Page objects encapsulate selectors and common interactions so spec files stay readable.
+- **Fixtures:** Will live in `tests/e2e/fixtures/`. Fixtures handle shared setup like logging in as admin, creating test posts, and resetting plugin settings between tests.
+- **Spec files:** Colocated with `.md` files inside `tests/e2e/specs/` feature folders.
 - **CI:** Playwright tests will run in GitHub Actions on pull requests targeting `master`, after PHPUnit tests pass.
 
-Until the Playwright config is in place, write spec files so they can be picked up by a standard `playwright.config.ts` that sets `testDir: 'tests/e2e'` and `testMatch: '**/*.spec.ts'`.
+Until the Playwright config is in place, write spec files so they can be picked up by a standard `playwright.config.ts` that sets `testDir: 'tests/e2e/specs'` and `testMatch: '**/*.spec.ts'`.
 
 ---
 
