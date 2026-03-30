@@ -96,7 +96,7 @@ class DeleteCommandTest extends WP_UnitTestCase {
 
 		$remaining = get_comments( array( 'post_id' => $post_id ) );
 		$this->assertCount( 1, $remaining );
-		$this->assertEquals( '', $remaining[0]->comment_type );
+		$this->assertEquals( 'comment', $remaining[0]->comment_type );
 	}
 
 	// -------------------------------------------------------------------------

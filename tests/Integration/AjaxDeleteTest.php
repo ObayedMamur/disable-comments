@@ -150,7 +150,7 @@ class AjaxDeleteTest extends WP_Ajax_UnitTestCase {
 
 		$remaining = get_comments( array( 'post_id' => $post_id ) );
 		$this->assertCount( 1, $remaining );
-		$this->assertEquals( '', $remaining[0]->comment_type );
+		$this->assertEquals( 'comment', $remaining[0]->comment_type );
 	}
 
 	// -------------------------------------------------------------------------
@@ -191,7 +191,7 @@ class AjaxDeleteTest extends WP_Ajax_UnitTestCase {
 
 		$this->plugin->delete_comments_settings( array( 'delete_mode' => 'delete_spam' ) );
 
-		$remaining = get_comments( array( 'post_id' => $post_id, 'status' => 'all' ) );
+		$remaining = get_comments( array( 'post_id' => $post_id, 'status' => 'spam' ) );
 		$this->assertCount( 1, $remaining );
 		$this->assertEquals( 'review', $remaining[0]->comment_type );
 	}
@@ -201,6 +201,7 @@ class AjaxDeleteTest extends WP_Ajax_UnitTestCase {
 	// -------------------------------------------------------------------------
 
 	public function test_ajax_delete_fails_with_bad_nonce() {
+		$this->plugin->is_CLI = false; // Test real AJAX path so wp_die() is called.
 		$post_id = $this->factory->post->create();
 		$this->factory->comment->create( array( 'comment_post_ID' => $post_id ) );
 		$_POST['nonce'] = 'bad_nonce';
@@ -208,8 +209,8 @@ class AjaxDeleteTest extends WP_Ajax_UnitTestCase {
 
 		try {
 			$this->_handleAjax( 'disable_comments_delete_comments' );
-		} catch ( WPAjaxDieStopException $e ) {
-			// Expected.
+		} catch ( WPAjaxDieContinueException $e ) {
+			// Expected: wp_send_json_success() calls wp_die('') internally.
 		}
 
 		$this->assertGreaterThan( 0, $this->get_comment_count() );

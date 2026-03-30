@@ -18,16 +18,35 @@ class HookRegistrationTest extends WP_UnitTestCase {
 		$this->plugin = Disable_Comments::get_instance();
 	}
 
+	public function tear_down() {
+		// Restore comment/trackback support that tests may have removed globally.
+		add_post_type_support( 'post', 'comments' );
+		add_post_type_support( 'post', 'trackbacks' );
+		parent::tear_down();
+	}
+
 	// -------------------------------------------------------------------------
 	// Constructor-registered hooks (always present)
 	// -------------------------------------------------------------------------
 
 	public function test_constructor_registers_plugins_loaded_hook() {
-		$this->assertNotFalse( has_action( 'plugins_loaded', array( $this->plugin, 'init_filters' ) ) );
+		// Reset within this test so hooks are registered in the current $wp_filter snapshot.
+		$reflection = new ReflectionProperty( Disable_Comments::class, 'instance' );
+		$reflection->setAccessible( true );
+		$reflection->setValue( null, null );
+		$plugin = Disable_Comments::get_instance();
+
+		$this->assertNotFalse( has_action( 'plugins_loaded', array( $plugin, 'init_filters' ) ) );
 	}
 
 	public function test_constructor_registers_wp_loaded_hooks() {
-		$this->assertNotFalse( has_action( 'wp_loaded', array( $this->plugin, 'start_plugin_usage_tracking' ) ) );
+		// Reset within this test so hooks are registered in the current $wp_filter snapshot.
+		$reflection = new ReflectionProperty( Disable_Comments::class, 'instance' );
+		$reflection->setAccessible( true );
+		$reflection->setValue( null, null );
+		$plugin = Disable_Comments::get_instance();
+
+		$this->assertNotFalse( has_action( 'wp_loaded', array( $plugin, 'start_plugin_usage_tracking' ) ) );
 	}
 
 	// -------------------------------------------------------------------------
@@ -125,6 +144,8 @@ class HookRegistrationTest extends WP_UnitTestCase {
 	}
 
 	public function test_disabled_post_type_trackback_support_removed() {
+		// Ensure 'comments' support is present (required by the code path that removes 'trackbacks').
+		add_post_type_support( 'post', 'comments' );
 		add_post_type_support( 'post', 'trackbacks' );
 		$this->set_options( array(
 			'remove_everywhere'   => false,

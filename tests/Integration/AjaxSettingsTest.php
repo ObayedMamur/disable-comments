@@ -188,16 +188,17 @@ class AjaxSettingsTest extends WP_Ajax_UnitTestCase {
 	// -------------------------------------------------------------------------
 
 	public function test_ajax_save_settings_fails_with_bad_nonce() {
+		$this->plugin->is_CLI = false; // Test real AJAX path so wp_die() is called.
 		$_POST['nonce'] = 'bad_nonce';
 		$_POST['data']  = 'mode=remove_everywhere';
 
 		try {
 			$this->_handleAjax( 'disable_comments_save_settings' );
-		} catch ( WPAjaxDieStopException $e ) {
-			// Expected: WP ajax handler called wp_die
+		} catch ( WPAjaxDieContinueException $e ) {
+			// Expected: wp_send_json_success() calls wp_die('') internally.
 		}
 
-		// Options should NOT have been saved.
+		// Options should NOT have been saved (nonce failed, save block was skipped).
 		$options = get_option( 'disable_comments_options' );
 		$this->assertEmpty( $options['remove_everywhere'] ?? false );
 	}
@@ -207,6 +208,7 @@ class AjaxSettingsTest extends WP_Ajax_UnitTestCase {
 	// -------------------------------------------------------------------------
 
 	public function test_ajax_save_settings_succeeds_with_valid_nonce() {
+		$this->plugin->is_CLI = false; // Test real AJAX path so wp_die() is called.
 		$_POST['nonce'] = wp_create_nonce( 'disable_comments_save_settings' );
 		$_POST['data']  = http_build_query( array(
 			'mode' => 'remove_everywhere',
@@ -214,10 +216,11 @@ class AjaxSettingsTest extends WP_Ajax_UnitTestCase {
 
 		try {
 			$this->_handleAjax( 'disable_comments_save_settings' );
-		} catch ( WPAjaxDieStopException $e ) {
-			$response = json_decode( $this->_last_response, true );
-			$this->assertTrue( $response['success'] );
+		} catch ( WPAjaxDieContinueException $e ) {
+			// wp_send_json_success() calls wp_die('') internally — catch it here.
 		}
+		$response = json_decode( $this->_last_response, true );
+		$this->assertTrue( $response['success'] );
 	}
 
 	// -------------------------------------------------------------------------

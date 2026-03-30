@@ -98,8 +98,9 @@ class AdminMenuTest extends WP_UnitTestCase {
 
 		$this->plugin->filter_dashboard();
 
+		// remove_meta_box() sets the entry to false (does not unset it).
 		$this->assertFalse(
-			isset( $wp_meta_boxes['dashboard']['normal']['core']['dashboard_recent_comments'] )
+			$wp_meta_boxes['dashboard']['normal']['core']['dashboard_recent_comments']
 		);
 	}
 
@@ -142,7 +143,7 @@ class AdminMenuTest extends WP_UnitTestCase {
 
 		$links = $this->plugin->plugin_actions_links(
 			array( '<a href="deactivate">Deactivate</a>' ),
-			'disable-comments/disable-comments.php'
+			plugin_basename( DC_PLUGIN_ROOT_PATH . '/disable-comments.php' )
 		);
 
 		$settings_found = false;
