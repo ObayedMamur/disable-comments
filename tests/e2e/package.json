@@ -1,0 +1,23 @@
+{
+  "name": "disable-comments-e2e",
+  "version": "1.0.0",
+  "description": "Playwright E2E tests for the Disable Comments plugin",
+  "scripts": {
+    "env:up": "docker compose up -d && sh scripts/wait-for-setup.sh",
+    "env:down": "docker compose down",
+    "env:reset": "docker compose down -v && docker compose up -d && sh scripts/wait-for-setup.sh",
+    "env:logs": "docker compose logs -f",
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "test:debug": "playwright test --debug"
+  },
+  "author": "Abu Hurayra (HurayraIIT)",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "@types/node": "^25.5.0",
+    "@wordpress/e2e-test-utils-playwright": "^1.42.0"
+  }
+}
