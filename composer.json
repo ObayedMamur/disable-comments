@@ -24,10 +24,27 @@
     "issues": "https://github.com/WPDevelopers/disable-comments/issues"
   },
   "require": {
-    "php": ">=5.2.4",
+    "php": ">=7.4",
     "composer/installers": "~1.0"
   },
   "require-dev": {
-    "brain/monkey": "2.4.0"
+    "phpunit/phpunit": "^9.6",
+    "wp-phpunit/wp-phpunit": "^6.4"
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "DisableComments\\Tests\\": "tests/"
+    }
+  },
+  "scripts": {
+    "test": "phpunit",
+    "test:unit": "phpunit --testsuite unit",
+    "test:integration": "phpunit --testsuite integration",
+    "test:cli": "phpunit --testsuite cli"
+  },
+  "config": {
+    "allow-plugins": {
+      "composer/installers": true
+    }
   }
 }
