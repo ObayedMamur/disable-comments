@@ -1,5 +1,8 @@
 # Disable Comments — Plugin Development Guide
 
+> **Spec-Kit project.** Constitution: `.specify/memory/constitution.md` · Specs: `specs/` · Commands: `/speckit.specify`, `/speckit.plan`, `/speckit.tasks`, `/speckit.implement`
+> **WordPress agent skills:** `.claude/skills/` — `wp-plugin-development`, `wp-wpcli-and-ops`, `wp-phpstan`, `wp-project-triage`
+
 WordPress plugin by WPDeveloper. Allows administrators to globally disable comments by post type, with multisite network support.
 
 - **WordPress.org:** <https://wordpress.org/plugins/disable-comments/>
@@ -61,11 +64,30 @@ npm run release    # Build + generate .pot + package release
 ```
 
 ```bash
-composer install              # Install PHP dev deps (Brain/Monkey for tests)
-./vendor/bin/phpunit          # Run tests
+composer install   # Install PHP dev deps
+```
+
+**Testing — ALL tests run via wp-env (never bare phpunit on host):**
+
+```bash
+npm run env:start                                                                    # Start the test environment
+wp-env run cli --env-cwd=wp-content/plugins/disable-comments phpunit                # Run all PHP tests
+wp-env run cli --env-cwd=wp-content/plugins/disable-comments phpunit --filter Foo  # Run a specific test
+npm run env:stop                                                                     # Stop the environment
 ```
 
 **Linting:** `phpcs.ruleset.xml` is configured for WordPress Coding Standards.
+
+## Test-First Workflow
+
+All work follows TDD — tests are written before implementation:
+
+1. `/speckit.specify` — write the spec for the feature/behaviour
+2. `/speckit.plan` — plan the implementation
+3. `/speckit.tasks` — break into tasks, starting with test tasks
+4. Write tests → confirm they fail → `/speckit.implement` → confirm they pass
+
+**Coverage goal:** Every existing behaviour must have a test before openclaw work begins. See `specs/` for active specs.
 
 ---
 
