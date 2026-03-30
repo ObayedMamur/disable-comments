@@ -137,7 +137,7 @@ class UtilityTest extends WP_UnitTestCase {
 
 	public function test_get_roles_includes_core_roles() {
 		$roles = $this->plugin->get_roles( array() );
-		$slugs = array_column( $roles, 'slug' );
+		$slugs = array_column( $roles, 'id' );
 
 		$this->assertContains( 'administrator', $slugs );
 		$this->assertContains( 'editor', $slugs );
@@ -148,7 +148,7 @@ class UtilityTest extends WP_UnitTestCase {
 
 		$editor = null;
 		foreach ( $roles as $role ) {
-			if ( $role['slug'] === 'editor' ) {
+			if ( $role['id'] === 'editor' ) {
 				$editor = $role;
 				break;
 			}
@@ -160,7 +160,7 @@ class UtilityTest extends WP_UnitTestCase {
 
 	public function test_get_roles_includes_logged_out_users_option() {
 		$roles = $this->plugin->get_roles( array() );
-		$slugs = array_column( $roles, 'slug' );
+		$slugs = array_column( $roles, 'id' );
 
 		$this->assertContains( 'logged-out-users', $slugs );
 	}

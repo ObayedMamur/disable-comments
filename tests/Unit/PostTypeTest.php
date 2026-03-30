@@ -102,11 +102,17 @@ class PostTypeTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'page', $types );
 	}
 
-	public function test_get_all_post_types_excludes_attachment_by_default() {
+	public function test_get_all_post_types_excludes_type_without_comment_support() {
+		// Register a public type that explicitly does NOT support comments.
+		register_post_type( 'dc_no_comments', array(
+			'public'   => true,
+			'supports' => array( 'title' ),
+		) );
+
 		$types = $this->plugin->get_all_post_types();
 
-		// attachment does not support comments by default in WP
-		$this->assertArrayNotHasKey( 'attachment', $types );
+		$this->assertArrayNotHasKey( 'dc_no_comments', $types );
+		unregister_post_type( 'dc_no_comments' );
 	}
 
 	public function test_get_all_post_types_includes_registered_cpt_with_comments() {
