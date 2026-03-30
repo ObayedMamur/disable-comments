@@ -1220,6 +1220,10 @@ class Disable_Comments {
 	public function disable_comments_settings($_args = array()) {
 		$nonce = (isset($_POST['nonce']) ? sanitize_text_field(wp_unslash($_POST['nonce'])) : '');
 		if (($this->is_CLI && !empty($_args)) || wp_verify_nonce($nonce, 'disable_comments_save_settings')) {
+			$required_cap = $this->is_network_admin() ? 'manage_network_plugins' : 'manage_options';
+			if (!$this->is_CLI && !current_user_can($required_cap)) {
+				wp_send_json_error(['message' => 'Insufficient permissions.'], 403);
+			}
 
 			$formArray = $this->get_form_array_escaped($_args);
 
