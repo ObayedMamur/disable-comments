@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<phpunit
+	bootstrap="tests/bootstrap-security.php"
+	backupGlobals="false"
+	colors="true"
+>
+	<testsuites>
+		<testsuite name="security">
+			<file>./tests/test-security.php</file>
+			<file>./tests/test-security-e2e.php</file>
+		</testsuite>
+	</testsuites>
+</phpunit>
