@@ -1,0 +1,13 @@
+{
+  "core": "WordPress/WordPress",
+  "plugins": [ "." ],
+  "phpVersion": "8.2",
+  "multisite": true,
+  "config": {
+    "WP_DEBUG": true,
+    "WP_DEBUG_LOG": true,
+    "SCRIPT_DEBUG": true
+  },
+  "lifecycleScripts": {}
+
+}
