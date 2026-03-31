@@ -52,6 +52,24 @@ All three AJAX handlers are registered in `__construct()` (~line 49):
 
 ---
 
+## Multisite Terminology
+
+These terms have specific meanings in this codebase. Use them precisely to avoid confusion.
+
+| Term | Meaning |
+| ---- | ------- |
+| `$this->networkactive` | Plugin is activated network-wide. Set at construct time from `get_site_option('active_sitewide_plugins')`. Server-side fact — never forgeable. Does **not** mean the current request is from the network admin screen. |
+| `$this->sitewide_settings` | Super admin has toggled "apply settings to all sites". Stored in `get_site_option('disable_comments_sitewide_settings')`. Controls whether per-site options are overridden. |
+| `is_network_admin()` | WordPress built-in. True only when the URL is under `/wp-admin/network/`. **Always false during AJAX requests.** |
+| `$this->is_network_admin_ajax_context()` | Private. Returns true when the request is from a network admin screen — checks WP's `is_network_admin()` first, then `$_GET['is_network_admin']` for AJAX. **Routing hint only — never use for capability decisions.** |
+| `$this->can_network_admin_ajax_context()` | Private. Returns true when `is_network_admin_ajax_context()` AND `current_user_can('manage_network_plugins')`. **Use this for capability-gated decisions.** |
+| "network admin context" | The current request originates from the network admin screen. Detected via `is_network_admin()` (page loads) or the `is_network_admin=1` GET param appended to the AJAX URL by JS (AJAX). |
+| "subsite admin context" | The current request originates from a single-site admin screen inside the network. |
+| `update_site_option()` | Writes to network-wide option storage. Used when saving settings that apply across all sites. |
+| `update_option()` | Writes to the current site's option storage only. |
+
+---
+
 ## Development
 
 ```bash
