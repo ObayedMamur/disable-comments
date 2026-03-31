@@ -61,7 +61,11 @@ class Disable_Comments {
 
 		$this->sitewide_settings = get_site_option('disable_comments_sitewide_settings', false);
 		// Load options.
-		if ($this->networkactive && ($this->can_network_admin_ajax_context() || $this->sitewide_settings !== '1')) {
+		// Use is_network_admin_ajax_context() here (not can_*) because
+		// current_user_can() is unavailable during plugin construction —
+		// pluggable.php hasn't loaded yet. Capability checks happen later
+		// in the AJAX handlers, not here.
+		if ($this->networkactive && ($this->is_network_admin_ajax_context() || $this->sitewide_settings !== '1')) {
 			$this->options = get_site_option('disable_comments_options', array());
 			$this->options['disabled_sites'] = $this->get_disabled_sites();
 
