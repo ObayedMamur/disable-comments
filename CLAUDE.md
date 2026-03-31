@@ -87,6 +87,16 @@ composer install              # Install PHP dev deps (Brain/Monkey for tests)
 
 ---
 
+## Worktrees
+
+All git worktrees **must** be created inside `.claude/worktrees/`. This directory is already in `.gitignore` and `.distignore`.
+
+```bash
+git worktree add .claude/worktrees/<name> <branch>
+```
+
+---
+
 ## Architecture Notes
 
 - **Singleton pattern:** Always access via `Disable_Comments::get_instance()`.
