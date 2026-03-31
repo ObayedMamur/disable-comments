@@ -24,17 +24,19 @@ class NetworkDeletionTest extends WP_UnitTestCase {
 			$this->markTestSkipped( 'Multisite not active.' );
 		}
 		parent::set_up();
-		$this->plugin = Disable_Comments::get_instance();
+		$this->plugin         = Disable_Comments::get_instance();
+		$this->plugin->is_CLI = true; // Direct method calls — bypass nonce + JSON output.
 		$user_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
 		wp_set_current_user( $user_id );
 		grant_super_admin( $user_id );
 
-		// Create two test sub-sites.
-		$this->site_ids[] = wpmu_create_blog( 'test1.example.com', '/', 'Test Site 1', $user_id );
-		$this->site_ids[] = wpmu_create_blog( 'test2.example.com', '/', 'Test Site 2', $user_id );
+		// Create two test sub-sites using the factory (handles unique path generation).
+		$this->site_ids[] = $this->factory->blog->create( array( 'title' => 'Test Site 1' ) );
+		$this->site_ids[] = $this->factory->blog->create( array( 'title' => 'Test Site 2' ) );
 	}
 
 	public function tear_down() {
+		$this->plugin->is_CLI = false;
 		foreach ( $this->site_ids as $site_id ) {
 			wpmu_delete_blog( $site_id, true );
 		}

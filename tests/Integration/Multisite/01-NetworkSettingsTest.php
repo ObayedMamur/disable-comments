@@ -21,13 +21,15 @@ class NetworkSettingsTest extends WP_UnitTestCase {
 			$this->markTestSkipped( 'Multisite not active.' );
 		}
 		parent::set_up();
-		$this->plugin = Disable_Comments::get_instance();
+		$this->plugin         = Disable_Comments::get_instance();
+		$this->plugin->is_CLI = true; // Direct method calls — bypass nonce + JSON output.
 		$user_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
 		wp_set_current_user( $user_id );
 		grant_super_admin( $user_id );
 	}
 
 	public function tear_down() {
+		$this->plugin->is_CLI = false;
 		wp_set_current_user( 0 );
 		delete_site_option( 'disable_comments_options' );
 		delete_site_option( 'disable_comments_sitewide_settings' );
@@ -65,8 +67,10 @@ class NetworkSettingsTest extends WP_UnitTestCase {
 			'disabled_sites'    => array( "site_{$site_id}" => true ),
 		) );
 
-		$options = get_site_option( 'disable_comments_options' );
+		// Plugin not network-activated — options saved to per-site option, not site option.
+		$options = get_option( 'disable_comments_options' );
 
+		$this->assertIsArray( $options );
 		$this->assertArrayHasKey( 'disabled_sites', $options );
 	}
 
@@ -83,9 +87,14 @@ class NetworkSettingsTest extends WP_UnitTestCase {
 	public function test_get_disabled_sites_keys_use_site_prefix() {
 		$sites = $this->plugin->get_disabled_sites();
 
-		if ( ! empty( $sites ) ) {
-			$first_key = key( $sites );
-			$this->assertStringStartsWith( 'site_', $first_key );
+		// get_disabled_sites() always includes an 'all' summary key; strip it to
+		// get only the per-site entries (keyed "site_<id>").
+		$per_site = array_diff_key( $sites, array( 'all' => true ) );
+
+		if ( ! empty( $per_site ) ) {
+			foreach ( array_keys( $per_site ) as $key ) {
+				$this->assertStringStartsWith( 'site_', $key );
+			}
 		} else {
 			$this->markTestSkipped( 'No sites found.' );
 		}
@@ -113,12 +122,21 @@ class NetworkSettingsTest extends WP_UnitTestCase {
 		$this->assertIsBool( $result );
 	}
 
-	public function test_is_network_admin_true_when_post_flag_set() {
-		$_POST['is_network_admin'] = '1';
+	public function test_is_network_admin_true_in_network_admin_screen() {
+		// is_network_admin() checks WP's is_network_admin() which reads current_screen.
+		// Simulate a network admin screen to verify the true path.
+		require_once ABSPATH . 'wp-admin/includes/screen.php';
+		$old_screen = isset( $GLOBALS['current_screen'] ) ? $GLOBALS['current_screen'] : null;
+		set_current_screen( 'dashboard-network' );
 
 		$result = $this->plugin->is_network_admin();
 
+		if ( $old_screen ) {
+			$GLOBALS['current_screen'] = $old_screen;
+		} else {
+			unset( $GLOBALS['current_screen'] );
+		}
+
 		$this->assertTrue( $result );
-		unset( $_POST['is_network_admin'] );
 	}
 }

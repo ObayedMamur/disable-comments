@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<phpunit
+	bootstrap="tests/bootstrap-multisite.php"
+	backupGlobals="false"
+	colors="true"
+>
+	<testsuites>
+		<testsuite name="multisite">
+			<directory>./tests/Integration/Multisite</directory>
+		</testsuite>
+	</testsuites>
+
+	<coverage>
+		<include>
+			<file>./disable-comments.php</file>
+			<directory suffix=".php">./includes</directory>
+		</include>
+		<exclude>
+			<directory>./vendor</directory>
+			<directory>./node_modules</directory>
+			<directory>./tests</directory>
+			<directory>./views</directory>
+		</exclude>
+	</coverage>
+</phpunit>

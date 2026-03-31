@@ -16,6 +16,7 @@
     "test:php:integration": "wp-env run tests-cli --env-cwd=wp-content/plugins/openclaw ./vendor/bin/phpunit --testsuite integration",
     "test:php:cli": "wp-env run tests-cli --env-cwd=wp-content/plugins/openclaw ./vendor/bin/phpunit --testsuite cli",
     "test:php:all": "wp-env run tests-cli --env-cwd=wp-content/plugins/openclaw ./vendor/bin/phpunit --testsuite all",
+    "test:php:multisite": "wp-env run tests-cli --env-cwd=wp-content/plugins/openclaw ./vendor/bin/phpunit -c phpunit-multisite.xml.dist",
     "test:e2e": "playwright test --config=tests/E2E/playwright.config.js"
   },
   "devDependencies": {
