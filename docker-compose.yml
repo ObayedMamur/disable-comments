@@ -9,6 +9,7 @@ services:
     volumes:
       - openclaw-config:/home/node/.openclaw
       - openclaw-workspace:/home/node/.openclaw/workspace
+      - /Users/alim/Sites/git/disable-comments:/home/node/.openclaw/workspace/disable-comments:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
@@ -45,6 +46,7 @@ services:
     volumes:
       - openclaw-config:/home/node/.openclaw
       - openclaw-workspace:/home/node/.openclaw/workspace
+      - /Users/alim/Sites/git/disable-comments:/home/node/.openclaw/workspace/disable-comments:ro
     stdin_open: true
     tty: true
     init: true
