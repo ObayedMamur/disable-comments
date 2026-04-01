@@ -4,7 +4,8 @@
   "port": 8888,
   "autoPort": true,
   "plugins": [
-    "https://downloads.wordpress.org/plugin/woocommerce.zip"
+    "https://downloads.wordpress.org/plugin/woocommerce.zip",
+    "https://downloads.wordpress.org/plugin/automatic-login.zip"
   ],
   "mappings": {
     "wp-content/plugins/disable-comments": "."

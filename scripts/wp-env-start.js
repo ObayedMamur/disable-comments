@@ -46,16 +46,24 @@ child.on('close', function (code) {
 	}
 
 	// mappings-mounted plugins are not auto-activated by wp-env — activate manually.
+	// Check whether this is a multisite install first so we use --network only when appropriate.
 	console.log('\nActivating disable-comments plugin...');
-	var activate = spawn(
+	var isMultisite = spawn(
 		'npx',
-		['wp-env', 'run', 'cli', 'wp', 'plugin', 'activate', 'disable-comments', '--network'],
-		{ stdio: 'inherit' }
+		['wp-env', 'run', 'cli', 'wp', 'core', 'is-installed', '--network'],
+		{ stdio: 'ignore' }
 	);
-	activate.on('close', function (activateCode) {
-		if (activateCode !== 0) {
-			console.warn('\nPlugin activation exited with code ' + activateCode);
+	isMultisite.on('close', function (msCode) {
+		var activateArgs = ['wp-env', 'run', 'cli', 'wp', 'plugin', 'activate', 'disable-comments'];
+		if (msCode === 0) {
+			activateArgs.push('--network');
 		}
-		process.exit(activateCode || 0);
+		var activate = spawn('npx', activateArgs, { stdio: 'inherit' });
+		activate.on('close', function (activateCode) {
+			if (activateCode !== 0) {
+				console.warn('\nPlugin activation exited with code ' + activateCode);
+			}
+			process.exit(activateCode || 0);
+		});
 	});
 });
