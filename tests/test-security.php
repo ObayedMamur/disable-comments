@@ -989,3 +989,236 @@ class Test_Role_Name_XSS extends WP_UnitTestCase {
 		);
 	}
 }
+
+// ---------------------------------------------------------------------------
+// PR #161 Review Comment r3019649044 — get_sub_sites() per-site activation bypass
+// @see https://github.com/WPDevelopers/disable-comments/pull/161#discussion_r3019649044
+//
+// When the plugin is activated per-site (NOT network-wide) on a multisite
+// install, $this->networkactive is false. The old code fell back to
+// manage_options for the capability check, allowing any subsite admin to
+// enumerate all network sites. The fix uses is_multisite() instead, so the
+// cap is always manage_network_plugins on multisite regardless of activation.
+// ---------------------------------------------------------------------------
+class Test_SubSite_Enumeration_PerSite extends WP_Ajax_UnitTestCase {
+
+	private $original_request;
+	private $original_get;
+	private $original_networkactive;
+
+	public function setUp() {
+		parent::setUp();
+		$this->original_request = $_REQUEST;
+		$this->original_get     = $_GET;
+
+		// Simulate per-site activation: networkactive = false
+		$plugin = Disable_Comments::get_instance();
+		$ref = new ReflectionProperty( $plugin, 'networkactive' );
+		$ref->setAccessible( true );
+		$this->original_networkactive = $ref->getValue( $plugin );
+		$ref->setValue( $plugin, false );
+	}
+
+	public function tearDown() {
+		$plugin = Disable_Comments::get_instance();
+		$ref = new ReflectionProperty( $plugin, 'networkactive' );
+		$ref->setAccessible( true );
+		$ref->setValue( $plugin, $this->original_networkactive );
+		$_REQUEST = $this->original_request;
+		$_GET     = $this->original_get;
+		parent::tearDown();
+	}
+
+	private function do_ajax_get_sub_sites() {
+		$_GET['nonce'] = wp_create_nonce( 'disable_comments_save_settings' );
+		$_GET['type']  = 'disabled';
+
+		try {
+			$this->_handleAjax( 'get_sub_sites' );
+		} catch ( WPDieException $e ) {
+			// Expected.
+		}
+
+		return json_decode( $this->_last_response, true );
+	}
+
+	/**
+	 * A subsite admin (manage_options only) must NOT be able to enumerate
+	 * network sites even when the plugin is activated per-site (networkactive=false).
+	 *
+	 * This is the exact bug reported in PR #161 review comment r3019649044:
+	 * old code used $this->networkactive ? 'manage_network_plugins' : 'manage_options'
+	 * which fell through to manage_options when per-site activated, allowing any
+	 * subsite admin to list all sites.
+	 *
+	 * @group ms-required
+	 */
+	public function test_subsite_admin_cannot_enumerate_when_persite_activated() {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'Requires multisite.' );
+		}
+
+		$admin = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin );
+		$this->assertTrue(
+			current_user_can( 'manage_options' ),
+			'Prerequisite: test user must have manage_options.'
+		);
+		$this->assertFalse(
+			current_user_can( 'manage_network_plugins' ),
+			'Prerequisite: test user must lack manage_network_plugins.'
+		);
+
+		$response = $this->do_ajax_get_sub_sites();
+
+		$this->assertIsArray( $response );
+		$this->assertEmpty(
+			$response['data'],
+			'Subsite admin must NOT enumerate sites when plugin is per-site activated. ' .
+			'Bug: capability check used $this->networkactive instead of is_multisite().'
+		);
+		$this->assertEquals(
+			0,
+			(int) $response['totalNumber'],
+			'totalNumber must be 0 for non-super-admin even with per-site activation.'
+		);
+	}
+
+	/**
+	 * A super-admin can still enumerate even with per-site activation.
+	 *
+	 * @group ms-required
+	 */
+	public function test_super_admin_can_enumerate_when_persite_activated() {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'Requires multisite.' );
+		}
+
+		$super = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		grant_super_admin( $super );
+		wp_set_current_user( $super );
+
+		$response = $this->do_ajax_get_sub_sites();
+
+		$this->assertIsArray( $response );
+		$this->assertGreaterThanOrEqual(
+			1,
+			(int) $response['totalNumber'],
+			'Super-admin must see sites even with per-site activation.'
+		);
+	}
+}
+
+// ---------------------------------------------------------------------------
+// PR #161 Review Comment r3019664445 — PHP 5.6 compatibility (no type hints)
+// @see https://github.com/WPDevelopers/disable-comments/pull/161#discussion_r3019664445
+//
+// The plugin declares "Requires PHP: 5.6" in readme.txt. Scalar type
+// declarations (bool, int, string, void, etc.) cause fatal parse errors on
+// PHP 5.6. This test scans the main plugin file to ensure no such
+// declarations exist.
+// ---------------------------------------------------------------------------
+class Test_PHP56_Compatibility extends WP_UnitTestCase {
+
+	/**
+	 * The main plugin file must not contain PHP 7+ scalar type declarations
+	 * in function/method signatures that would cause a parse error on PHP 5.6.
+	 *
+	 * Patterns checked:
+	 *   - Parameter type hints: function foo(bool $x, int $y, string $z)
+	 *   - Return type declarations: function foo(): bool, : void, : string
+	 *   - Nullable types: function foo(?string $x)
+	 *   - Union types: function foo(int|string $x)
+	 */
+	public function test_no_scalar_type_declarations_in_main_plugin_file() {
+		$plugin_file = dirname( dirname( __FILE__ ) ) . '/disable-comments.php';
+		$this->assertFileExists( $plugin_file );
+
+		$contents = file_get_contents( $plugin_file );
+
+		// Match parameter type declarations: (bool $var, int $var, string $var, etc.)
+		$scalar_types = array( 'bool', 'int', 'float', 'string', 'void', 'never', 'mixed', 'null', 'false', 'true' );
+		$pattern = '/function\s+\w+\s*\([^)]*\b(' . implode( '|', $scalar_types ) . ')\s+\$/m';
+
+		$this->assertDoesNotMatchRegularExpression(
+			$pattern,
+			$contents,
+			'Main plugin file must not use scalar parameter type hints (PHP 7.0+). ' .
+			'The plugin requires PHP 5.6 per readme.txt.'
+		);
+
+		// Match return type declarations: ): bool, ): void, ): string
+		$return_pattern = '/\)\s*:\s*\??\s*(' . implode( '|', $scalar_types ) . ')\b/m';
+
+		$this->assertDoesNotMatchRegularExpression(
+			$return_pattern,
+			$contents,
+			'Main plugin file must not use return type declarations (PHP 7.0+). ' .
+			'The plugin requires PHP 5.6 per readme.txt.'
+		);
+
+		// Match nullable types: ?string, ?int
+		$nullable_pattern = '/function\s+\w+\s*\([^)]*\?\s*(' . implode( '|', $scalar_types ) . ')\s+\$/m';
+
+		$this->assertDoesNotMatchRegularExpression(
+			$nullable_pattern,
+			$contents,
+			'Main plugin file must not use nullable type hints (PHP 7.1+). ' .
+			'The plugin requires PHP 5.6 per readme.txt.'
+		);
+	}
+
+	/**
+	 * The plugin must not use null coalescing operator (??) which requires PHP 7.0+.
+	 */
+	public function test_no_null_coalescing_in_main_plugin_file() {
+		$plugin_file = dirname( dirname( __FILE__ ) ) . '/disable-comments.php';
+		$contents = file_get_contents( $plugin_file );
+
+		// Match ?? but not inside strings or comments (rough heuristic)
+		// We check for ?? that's NOT inside a quoted string
+		$lines = explode( "\n", $contents );
+		$violations = array();
+		foreach ( $lines as $i => $line ) {
+			$trimmed = trim( $line );
+			// Skip comment-only lines
+			if ( strpos( $trimmed, '//' ) === 0 || strpos( $trimmed, '*' ) === 0 || strpos( $trimmed, '/*' ) === 0 ) {
+				continue;
+			}
+			// Check for ?? outside of string literals (simple heuristic)
+			if ( strpos( $line, '??' ) !== false ) {
+				// Remove string contents before checking
+				$stripped = preg_replace( '/(["\'])(?:(?!\1).)*\1/', '', $line );
+				if ( strpos( $stripped, '??' ) !== false ) {
+					$violations[] = sprintf( 'Line %d: %s', $i + 1, trim( $line ) );
+				}
+			}
+		}
+
+		$this->assertEmpty(
+			$violations,
+			"Main plugin file must not use null coalescing operator ?? (PHP 7.0+).\n" .
+			"Violations:\n" . implode( "\n", $violations )
+		);
+	}
+
+	/**
+	 * The CLI include file must also be PHP 5.6 compatible.
+	 */
+	public function test_no_scalar_type_declarations_in_cli_file() {
+		$cli_file = dirname( dirname( __FILE__ ) ) . '/includes/cli.php';
+		if ( ! file_exists( $cli_file ) ) {
+			$this->markTestSkipped( 'CLI file not found.' );
+		}
+
+		$contents = file_get_contents( $cli_file );
+		$scalar_types = array( 'bool', 'int', 'float', 'string', 'void', 'never', 'mixed' );
+		$pattern = '/function\s+\w+\s*\([^)]*\b(' . implode( '|', $scalar_types ) . ')\s+\$/m';
+
+		$this->assertDoesNotMatchRegularExpression(
+			$pattern,
+			$contents,
+			'CLI file must not use scalar parameter type hints (PHP 7.0+).'
+		);
+	}
+}
