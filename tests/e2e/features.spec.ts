@@ -92,6 +92,21 @@ function getPluginOption(): any {
 	}
 }
 
+/** Get network-wide plugin option as JSON (reads from site options table). */
+function getSitePluginOption(): any {
+	const raw = wpCli(`wp site option get disable_comments_options --format=json`, false);
+	try {
+		return JSON.parse(raw);
+	} catch {
+		return null;
+	}
+}
+
+/** Get the raw sitewide_settings flag from its standalone site option. */
+function getSitewideSettingsFlag(): string {
+	return wpCli(`wp site option get disable_comments_sitewide_settings`, false).trim();
+}
+
 /** Get comment count for a post. */
 function getCommentCount(postId: number | string): number {
 	const count = wpCli(`wp comment list --post_id=${postId} --format=count`, false);
@@ -1704,6 +1719,191 @@ test.describe('AJAX Settings Save', () => {
 		// Avatar should also be disabled
 		const avatars = wpCli(`wp option get show_avatars`);
 		expect(avatars).toBe('0');
+	});
+
+	// -----------------------------------------------------------------------
+	// sitewide_settings — must be saved with ?is_network_admin=1 so that
+	// $is_network_ctx is true on the server and update_site_option() fires.
+	// -----------------------------------------------------------------------
+
+	test('enable sitewide_settings persists to site option', async ({ page }) => {
+		await loginToNetworkAdmin(page);
+
+		const result = await saveSettingsViaAjax(
+			page,
+			'mode=remove_everywhere&sitewide_settings=1',
+			true  // is_network_admin=1 in URL — required for $is_network_ctx
+		);
+		expect(result.success).toBe(true);
+
+		// The flag lives in its own site option, not inside disable_comments_options
+		expect(getSitewideSettingsFlag()).toBe('1');
+	});
+
+	test('disable sitewide_settings persists to site option', async ({ page }) => {
+		// Pre-set to 1 so we have something to turn off
+		wpCli(`wp site option update disable_comments_sitewide_settings 1`);
+
+		await loginToNetworkAdmin(page);
+
+		const result = await saveSettingsViaAjax(
+			page,
+			'mode=remove_everywhere&sitewide_settings=0',
+			true
+		);
+		expect(result.success).toBe(true);
+
+		expect(getSitewideSettingsFlag()).toBe('0');
+	});
+
+	test('sitewide_settings checkbox reflects saved value on page reload', async ({ page }) => {
+		await loginToNetworkAdmin(page);
+
+		// Enable via AJAX (network admin path)
+		const result = await saveSettingsViaAjax(
+			page,
+			'mode=remove_everywhere&sitewide_settings=1',
+			true
+		);
+		expect(result.success).toBe(true);
+
+		// Reload the network admin settings page
+		await page.goto(SETTINGS_URL);
+		await page.waitForLoadState('networkidle');
+
+		// Checkbox must render as checked
+		await expect(page.locator('#sitewide_settings')).toBeChecked();
+	});
+
+	test('sitewide_settings ON: network save goes to site option', async ({ page }) => {
+		await loginToNetworkAdmin(page);
+
+		const result = await saveSettingsViaAjax(
+			page,
+			'mode=remove_everywhere&sitewide_settings=1',
+			true
+		);
+		expect(result.success).toBe(true);
+
+		// Network-wide options must be in the site options table
+		const siteOpts = getSitePluginOption();
+		expect(siteOpts).not.toBeNull();
+		expect(siteOpts.remove_everywhere).toBeTruthy();
+	});
+
+	test('sitewide_settings NOT saved when is_network_admin param missing', async ({ page }) => {
+		// Regression guard: sending sitewide_settings without ?is_network_admin=1
+		// must NOT update the flag (subsite admin must not toggle this).
+		wpCli(`wp site option update disable_comments_sitewide_settings 0`);
+
+		await loginToNetworkAdmin(page);
+
+		const result = await saveSettingsViaAjax(
+			page,
+			'mode=remove_everywhere&sitewide_settings=1',
+			false  // no ?is_network_admin=1 — simulates subsite admin
+		);
+		expect(result.success).toBe(true);
+
+		// Flag must still be 0 — request without is_network_admin=1 cannot change it
+		expect(getSitewideSettingsFlag()).toBe('0');
+	});
+});
+
+// ============================================================================
+// TEST SUITE: UI Save with Network Inspection
+// Verifies the actual form submission from the browser — URL, payload, response —
+// so any breakage in the JS serialisation path is caught separately from the
+// raw AJAX helpers above.
+// ============================================================================
+test.describe('UI Save with Network Inspection', () => {
+	test.beforeEach(async () => {
+		resetPluginSettings();
+	});
+
+	test('save button fires AJAX to is_network_admin URL with correct payload and sitewide_settings persists', async ({ page }) => {
+		await loginToNetworkAdmin(page);
+
+		// Arm the request listener BEFORE interacting with the form.
+		const requestPromise = page.waitForRequest(
+			req => req.url().includes('admin-ajax.php') && req.method() === 'POST'
+		);
+
+		// Enable sitewide_settings via the UI toggle.
+		await page.check('#sitewide_settings');
+		// Submit the form by clicking the Save Changes button.
+		await page.click('#disableCommentSaveSettings button.button__success');
+
+		const request = await requestPromise;
+
+		// 1. The AJAX URL must carry ?is_network_admin=1.
+		//    This is assembled by the JS from disableCommentsObj.is_network_admin
+		//    (set server-side to '1' when is_network_admin() is true).
+		//    Without it, $is_network_ctx is false on the server and
+		//    update_site_option() never fires, so the flag is lost on reload.
+		expect(request.url()).toContain('is_network_admin=1');
+
+		// 2. The nested 'data' field (jQuery serialize output) must contain
+		//    sitewide_settings=1 from the checked checkbox.
+		//    The outer POST body is: action=...&nonce=...&data=<serialized-form>
+		const rawBody = request.postData() ?? '';
+		const outerParams = new URLSearchParams(rawBody);
+		const innerData = outerParams.get('data') ?? '';
+		// innerData is already URL-decoded by URLSearchParams
+		const innerParams = new URLSearchParams(innerData);
+		expect(innerParams.get('sitewide_settings')).toBe('1');
+
+		// 3. Server must respond with success.
+		const response = await request.response();
+		expect(response).not.toBeNull();
+		const body = await response!.json();
+		expect(body.success).toBe(true);
+
+		// 4. Reload the settings page — the checkbox must still be checked.
+		await page.goto(SETTINGS_URL);
+		await page.waitForLoadState('networkidle');
+		await expect(page.locator('#sitewide_settings')).toBeChecked();
+
+		// 5. Confirm the site option was written correctly.
+		expect(getSitewideSettingsFlag()).toBe('1');
+	});
+
+	test('save button payload does NOT contain sitewide_settings=1 when checkbox is unchecked', async ({ page }) => {
+		// Pre-enable so we can observe the "turn off" path.
+		wpCli(`wp site option update disable_comments_sitewide_settings 1`);
+
+		await loginToNetworkAdmin(page);
+
+		const requestPromise = page.waitForRequest(
+			req => req.url().includes('admin-ajax.php') && req.method() === 'POST'
+		);
+
+		// Checkbox starts checked — uncheck it.
+		await page.uncheck('#sitewide_settings');
+		await page.click('#disableCommentSaveSettings button.button__success');
+
+		const request = await requestPromise;
+
+		// URL must still carry is_network_admin=1 (we are on network admin).
+		expect(request.url()).toContain('is_network_admin=1');
+
+		// Inner data must contain sitewide_settings=0 (from the hidden fallback input).
+		const rawBody = request.postData() ?? '';
+		const outerParams = new URLSearchParams(rawBody);
+		const innerData = outerParams.get('data') ?? '';
+		const innerParams = new URLSearchParams(innerData);
+		expect(innerParams.get('sitewide_settings')).toBe('0');
+
+		const response = await request.response();
+		const body = await response!.json();
+		expect(body.success).toBe(true);
+
+		// Reload — checkbox must be unchecked and flag must be '0'.
+		await page.goto(SETTINGS_URL);
+		await page.waitForLoadState('networkidle');
+		await expect(page.locator('#sitewide_settings')).not.toBeChecked();
+
+		expect(getSitewideSettingsFlag()).toBe('0');
 	});
 });
 
