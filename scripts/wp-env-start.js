@@ -45,19 +45,58 @@ child.on('close', function (code) {
 		process.exit(code);
 	}
 
-	// mappings-mounted plugins are not auto-activated by wp-env — activate manually.
-	// Check whether this is a multisite install first so we use --network only when appropriate.
-	console.log('\nActivating disable-comments plugin...');
+	// wp-env only applies "multisite": true on a fresh volume creation.
+	// If volumes were created before that setting existed the install stays
+	// single-site. Detect that and convert automatically so tests always get
+	// the environment they expect.
 	var isMultisite = spawn(
 		'npx',
 		['wp-env', 'run', 'cli', 'wp', 'core', 'is-installed', '--network'],
 		{ stdio: 'ignore' }
 	);
 	isMultisite.on('close', function (msCode) {
-		var activateArgs = ['wp-env', 'run', 'cli', 'wp', 'plugin', 'activate', 'disable-comments'];
-		if (msCode === 0) {
-			activateArgs.push('--network');
+		if (msCode !== 0) {
+			ensureMultisite(activatePlugin);
+		} else {
+			activatePlugin();
 		}
+	});
+
+	function wpEnvCli(args, label, cb) {
+		console.log('\n' + label);
+		var child = spawn('npx', ['wp-env', 'run', 'cli', '--'].concat(args), { stdio: 'inherit' });
+		child.on('close', cb);
+	}
+
+	function ensureMultisite(done) {
+		console.log('\nMultisite not detected — converting install...');
+		wpEnvCli(['wp', 'core', 'multisite-convert'], 'Converting to multisite...', function () {
+			// Read the port we resolved earlier to build DOMAIN_CURRENT_SITE.
+			var portData = {};
+			try { portData = JSON.parse(fs.readFileSync(PORT_FILE, 'utf8')); } catch (e) {}
+			var domain = 'localhost' + (portData.port ? ':' + portData.port : '');
+
+			var configSets = [
+				['wp', 'config', 'set', 'MULTISITE', 'true', '--raw', '--type=constant'],
+				['wp', 'config', 'set', 'SUBDOMAIN_INSTALL', 'false', '--raw', '--type=constant'],
+				['wp', 'config', 'set', 'DOMAIN_CURRENT_SITE', domain, '--type=constant'],
+				['wp', 'config', 'set', 'PATH_CURRENT_SITE', '/', '--type=constant'],
+				['wp', 'config', 'set', 'SITE_ID_CURRENT_SITE', '1', '--raw', '--type=constant'],
+				['wp', 'config', 'set', 'BLOG_ID_CURRENT_SITE', '1', '--raw', '--type=constant'],
+			];
+
+			function next(i) {
+				if (i >= configSets.length) { return done(); }
+				wpEnvCli(configSets[i], 'Setting ' + configSets[i][3] + '...', function () { next(i + 1); });
+			}
+			next(0);
+		});
+	}
+
+	// mappings-mounted plugins are not auto-activated by wp-env — activate manually.
+	function activatePlugin() {
+		console.log('\nActivating disable-comments plugin...');
+		var activateArgs = ['wp-env', 'run', 'cli', 'wp', 'plugin', 'activate', 'disable-comments', '--network'];
 		var activate = spawn('npx', activateArgs, { stdio: 'inherit' });
 		activate.on('close', function (activateCode) {
 			if (activateCode !== 0) {
@@ -65,5 +104,5 @@ child.on('close', function (code) {
 			}
 			process.exit(activateCode || 0);
 		});
-	});
+	}
 });
