@@ -37,10 +37,7 @@ function startEnv() {
 	pipe(child.stdout, process.stdout);
 	pipe(child.stderr, process.stderr);
 
-	child.on('close', afterStart);
-}
-
-function afterStart(code) {
+	child.on('close', function afterStart(code) {
 	var match = output.match(/development site started at http:\/\/localhost:(\d+)/i);
 	if (!match) {
 		// Fallback: try the "WordPress development site" phrasing used by newer wp-env
@@ -119,4 +116,5 @@ function afterStart(code) {
 			process.exit(activateCode || 0);
 		});
 	}
+	}); // end afterStart / child.on('close')
 }
