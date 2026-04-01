@@ -97,6 +97,52 @@ git worktree add .claude/worktrees/<name> <branch>
 
 ---
 
+## PHP Compatibility
+
+**Target range: PHP 5.6 – 8.x.** Code must run without fatal errors, warnings, or deprecation notices across the full range. Two kinds of problems to avoid:
+
+### Must not break on PHP 5.6 (do not use these newer features)
+
+| Feature | Introduced |
+| ------- | ---------- |
+| Scalar type hints (`bool $x`, `int $x`, `: string`, `: void`) | PHP 7.0 |
+| Null coalescing `??` and `??=` | PHP 7.0 / 7.4 |
+| Spaceship operator `<=>` | PHP 7.0 |
+| Anonymous classes `new class` | PHP 7.0 |
+| `declare(strict_types=1)` | PHP 7.0 |
+| Nullable types `?string` | PHP 7.1 |
+| Array destructuring `[$a, $b] = $arr` — use `list()` | PHP 7.1 |
+| Typed class properties `public int $x` | PHP 7.4 |
+| Arrow functions `fn(` | PHP 7.4 |
+| Named arguments `func(name: val)` | PHP 8.0 |
+| Match expression `match (` | PHP 8.0 |
+| Nullsafe operator `?->` | PHP 8.0 |
+| Union types `int\|string` | PHP 8.0 |
+| `str_contains()`, `str_starts_with()`, `str_ends_with()` | PHP 8.0 |
+| Enum declarations | PHP 8.1 |
+| Intersection types | PHP 8.1 |
+| Readonly properties | PHP 8.1 |
+| `never` return type | PHP 8.1 |
+
+Use `isset($x) ? $x : $default` instead of `$x ?? $default`.
+
+### Must not trigger warnings/deprecations on PHP 7.x or 8.x (avoid these old patterns)
+
+| Pattern | Removed / Deprecated |
+| ------- | -------------------- |
+| `mysql_*` functions | Removed PHP 7.0 |
+| `ereg()`, `split()`, `eregi()` | Removed PHP 7.0 |
+| Call-time pass-by-reference `foo(&$bar)` | Removed PHP 7.0 |
+| `/e` modifier in `preg_replace` | Removed PHP 7.0 |
+| `each()` | Removed PHP 8.0 |
+| Passing `null` to non-nullable built-in parameters | Deprecated PHP 8.1 |
+| Dynamic properties on non-`stdClass` objects without `#[AllowDynamicProperties]` | Deprecated PHP 8.2 |
+| Calling `count()` on non-countable value | Warning PHP 7.2+ |
+
+Short array syntax `[]` is fine — it was introduced in PHP 5.4.
+
+---
+
 ## Architecture Notes
 
 - **Singleton pattern:** Always access via `Disable_Comments::get_instance()`.
@@ -104,3 +150,7 @@ git worktree add .claude/worktrees/<name> <branch>
 - **Multisite vs single-site:** Plugin behaviour branches heavily on `$this->networkactive` (set in constructor) and `$this->sitewide_settings`.
 - **Database queries:** Use `$wpdb->prepare()` throughout `delete_comments()`. Safe against SQL injection.
 - **Input sanitization:** `get_form_array_escaped()` uses `wp_parse_args()` + `map_deep(sanitize_text_field)`.
+- **`is_multisite()` vs `$this->networkactive` — know the difference:**
+  - `$this->networkactive` = plugin is activated network-wide. Use this for **routing** decisions: which options table to read/write, which admin menu to register, whether to show network-wide UI.
+  - `is_multisite()` = WordPress is a multisite install (regardless of plugin activation mode). Use this for **capability guards** on any operation that touches network-level data (e.g. enumerating all sites). A per-site-activated plugin on multisite must never allow a regular subsite admin to list or access all network sites.
+  - Rule of thumb: if the question is "where do I save this?" use `$this->networkactive`. If the question is "can this user touch network data?" use `is_multisite()`.

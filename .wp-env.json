@@ -1,6 +1,9 @@
 {
   "core": "WordPress/WordPress",
-  "plugins": [ "." ],
+  "plugins": [
+    ".",
+    "https://downloads.wordpress.org/plugin/woocommerce.zip"
+  ],
   "phpVersion": "8.2",
   "multisite": true,
   "config": {
@@ -9,5 +12,4 @@
     "SCRIPT_DEBUG": true
   },
   "lifecycleScripts": {}
-
 }

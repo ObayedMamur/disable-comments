@@ -273,7 +273,7 @@ class Disable_Comments {
 		}
 	}
 
-	private function update_options(bool $is_network_ctx = false) {
+	private function update_options($is_network_ctx = false) {
 		if ($this->networkactive && $is_network_ctx) {
 			update_site_option('disable_comments_options', $this->options);
 		} else {
@@ -1199,9 +1199,11 @@ class Disable_Comments {
 		if (!wp_verify_nonce($nonce, 'disable_comments_save_settings')) {
 			wp_send_json(['data' => [], 'totalNumber' => 0]);
 		}
-		// Listing subsites is a network-admin operation; require manage_network_plugins
-		// when the plugin is network-active, otherwise fall back to manage_options.
-		$required_cap = $this->networkactive ? 'manage_network_plugins' : 'manage_options';
+		// Listing subsites is always a network-level operation on multisite —
+		// require manage_network_plugins regardless of how the plugin is activated
+		// (network-wide or per-site). A per-site admin must never enumerate all
+		// network sites. On single-site installs manage_options suffices.
+		$required_cap = is_multisite() ? 'manage_network_plugins' : 'manage_options';
 		if (!current_user_can($required_cap)) {
 			wp_send_json(['data' => [], 'totalNumber' => 0]);
 		}
