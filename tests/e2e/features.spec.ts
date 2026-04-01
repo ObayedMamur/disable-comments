@@ -13,11 +13,9 @@ import { test, expect, type Page } from '@playwright/test';
 import { execSync } from 'child_process';
 
 // ---------------------------------------------------------------------------
-// Constants
+// Constants — baseURL is injected by Playwright config (dynamic wp-env port).
+// All page.goto() calls use relative paths so baseURL is prepended automatically.
 // ---------------------------------------------------------------------------
-const BASE = 'http://localhost:8888';
-const AJAX_URL = `${BASE}/wp-admin/admin-ajax.php`;
-const REST_URL = `${BASE}/wp-json/wp/v2`;
 const ADMIN_USER = 'admin';
 const ADMIN_PASS = 'password';
 
@@ -41,14 +39,14 @@ function wpCli(cmd: string, throwOnError = true): string {
 // Auth helpers
 // ---------------------------------------------------------------------------
 async function login(page: Page, user = ADMIN_USER, pass = ADMIN_PASS): Promise<void> {
-	await page.goto(`${BASE}/wp-login.php`);
+	await page.goto(`/wp-login.php`);
 	await page.fill('#user_login', user);
 	await page.fill('#user_pass', pass);
 	await page.click('#wp-submit');
 	await page.waitForLoadState('networkidle');
 }
 
-const SETTINGS_URL = `${BASE}/wp-admin/network/settings.php?page=disable_comments_settings`;
+const SETTINGS_URL = `/wp-admin/network/settings.php?page=disable_comments_settings`;
 
 async function loginToNetworkAdmin(page: Page): Promise<void> {
 	// Login first to the main site
@@ -140,7 +138,7 @@ async function saveSettingsViaAjax(
 ): Promise<any> {
 	const nonce = await getSettingsNonce(page);
 	expect(nonce).toBeTruthy();
-	const url = isNetworkAdmin ? `${AJAX_URL}?is_network_admin=1` : AJAX_URL;
+	const url = isNetworkAdmin ? '/wp-admin/admin-ajax.php?is_network_admin=1' : '/wp-admin/admin-ajax.php';
 	return page.evaluate(
 		async ({ ajax, n, data }) => {
 			const resp = await fetch(ajax, {
@@ -166,7 +164,7 @@ async function deleteCommentsViaAjax(
 ): Promise<any> {
 	const nonce = await getSettingsNonce(page);
 	expect(nonce).toBeTruthy();
-	const url = isNetworkAdmin ? `${AJAX_URL}?is_network_admin=1` : AJAX_URL;
+	const url = isNetworkAdmin ? '/wp-admin/admin-ajax.php?is_network_admin=1' : '/wp-admin/admin-ajax.php';
 	return page.evaluate(
 		async ({ ajax, n, data }) => {
 			const resp = await fetch(ajax, {
@@ -204,30 +202,17 @@ let spamCommentId: string;
 // Global setup — runs once before all tests
 // ---------------------------------------------------------------------------
 test.beforeAll(async () => {
-	// Ensure plugin is active (slug may be "disable-comments" or "disable-comments-tests" in worktree)
+	// Mapped plugins are not auto-activated by wp-env — activate via CLI
 	try {
-		const active = wpCli('wp plugin list --field=name --status=active-network');
-		if (!active.includes('disable-comments')) {
-			// Try both possible slugs
-			try {
-				wpCli('wp plugin activate disable-comments --network');
-			} catch {
-				wpCli('wp plugin activate disable-comments-tests --network', false);
-			}
-		}
+		wpCli('wp plugin is-active disable-comments');
 	} catch {
-		wpCli('wp plugin activate disable-comments --network', false);
-		wpCli('wp plugin activate disable-comments-tests --network', false);
+		wpCli('wp plugin activate disable-comments --network');
 	}
 
-	// Ensure WooCommerce is active
 	try {
-		const active = wpCli('wp plugin list --field=name --status=active-network', false);
-		if (!active.includes('woocommerce')) {
-			wpCli('wp plugin activate woocommerce --network', false);
-		}
+		wpCli('wp plugin is-active woocommerce');
 	} catch {
-		wpCli('wp plugin activate woocommerce', false);
+		wpCli('wp plugin activate woocommerce --network', false);
 	}
 
 	// Set admin password
@@ -506,7 +491,7 @@ test.describe('Disable Comments — Remove Everywhere', () => {
 	test('comment feed returns error when remove_everywhere', async ({ page }) => {
 		disableCommentsViaCliAll();
 
-		const response = await page.goto(`${BASE}/comments/feed/`);
+		const response = await page.goto(`/comments/feed/`);
 		// Plugin redirects comment feed with 403
 		expect(response).not.toBeNull();
 		// Either 403 or the page content indicates comments are closed
@@ -532,7 +517,7 @@ test.describe('Disable Comments — Remove Everywhere', () => {
 		disableCommentsViaCliAll();
 
 		await login(page);
-		await page.goto(`${BASE}/wp-admin/`);
+		await page.goto(`/wp-admin/`);
 
 		// The comments menu should be removed
 		const commentsMenu = page.locator('#menu-comments');
@@ -550,7 +535,7 @@ test.describe('Disable Comments — Remove Everywhere', () => {
 		disableCommentsViaCliAll();
 
 		await login(page);
-		const response = await page.goto(`${BASE}/wp-admin/edit-comments.php`);
+		const response = await page.goto(`/wp-admin/edit-comments.php`);
 
 		// Should get 403 or die with "Comments are closed"
 		const body = await page.content();
@@ -563,7 +548,7 @@ test.describe('Disable Comments — Remove Everywhere', () => {
 		disableCommentsViaCliAll();
 
 		await login(page);
-		const response = await page.goto(`${BASE}/wp-admin/options-discussion.php`);
+		const response = await page.goto(`/wp-admin/options-discussion.php`);
 
 		const body = await page.content();
 		const blocked =
@@ -575,7 +560,7 @@ test.describe('Disable Comments — Remove Everywhere', () => {
 		disableCommentsViaCliAll();
 
 		await login(page);
-		await page.goto(`${BASE}/wp-admin/`);
+		await page.goto(`/wp-admin/`);
 
 		// Recent Comments metabox should not exist
 		await expect(page.locator('#dashboard_recent_comments')).toHaveCount(0);
@@ -814,7 +799,7 @@ test.describe('REST API Blocking', () => {
 		await login(page);
 
 		// Get WP REST nonce
-		await page.goto(`${BASE}/wp-admin/`);
+		await page.goto(`/wp-admin/`);
 		const restNonce = await page.evaluate(() => (window as any).wpApiSettings?.nonce ?? '');
 
 		const result = await page.evaluate(
@@ -833,7 +818,7 @@ test.describe('REST API Blocking', () => {
 				});
 				return { status: resp.status, body: await resp.json() };
 			},
-			{ restUrl: REST_URL, postId: testPostId, nonce: restNonce }
+			{ restUrl: '/wp-json/wp/v2', postId: testPostId, nonce: restNonce }
 		);
 
 		// Should be blocked
@@ -854,7 +839,7 @@ test.describe('REST API Blocking', () => {
 		);
 
 		await login(page);
-		await page.goto(`${BASE}/wp-admin/`);
+		await page.goto(`/wp-admin/`);
 		const restNonce = await page.evaluate(() => (window as any).wpApiSettings?.nonce ?? '');
 
 		const result = await page.evaluate(
@@ -873,7 +858,7 @@ test.describe('REST API Blocking', () => {
 				});
 				return { status: resp.status, body: await resp.json() };
 			},
-			{ restUrl: REST_URL, postId: testPostId, nonce: restNonce }
+			{ restUrl: '/wp-json/wp/v2', postId: testPostId, nonce: restNonce }
 		);
 
 		expect(result.status).toBe(201);
@@ -897,7 +882,7 @@ test.describe('REST API Blocking', () => {
 		);
 
 		await login(page);
-		await page.goto(`${BASE}/wp-admin/`);
+		await page.goto(`/wp-admin/`);
 		const restNonce = await page.evaluate(() => (window as any).wpApiSettings?.nonce ?? '');
 
 		const result = await page.evaluate(
@@ -916,7 +901,7 @@ test.describe('REST API Blocking', () => {
 				});
 				return { status: resp.status };
 			},
-			{ restUrl: REST_URL, postId: testPostId, nonce: restNonce }
+			{ restUrl: '/wp-json/wp/v2', postId: testPostId, nonce: restNonce }
 		);
 
 		expect(result.status).toBe(403);
@@ -926,7 +911,7 @@ test.describe('REST API Blocking', () => {
 		disableCommentsViaCliAll();
 
 		await login(page);
-		await page.goto(`${BASE}/wp-admin/`);
+		await page.goto(`/wp-admin/`);
 		const restNonce = await page.evaluate(() => (window as any).wpApiSettings?.nonce ?? '');
 
 		const result = await page.evaluate(
@@ -937,7 +922,7 @@ test.describe('REST API Blocking', () => {
 				});
 				return { status: resp.status, body: await resp.json() };
 			},
-			{ restUrl: REST_URL, nonce: restNonce }
+			{ restUrl: '/wp-json/wp/v2', nonce: restNonce }
 		);
 
 		// Should either be 403 or return empty array
@@ -971,10 +956,10 @@ test.describe('XML-RPC Blocking', () => {
 		);
 
 		// Query available XML-RPC methods
-		const response = await page.goto(`${BASE}/xmlrpc.php`, { waitUntil: 'commit' });
+		const response = await page.goto(`/xmlrpc.php`, { waitUntil: 'commit' });
 		// Send a system.listMethods request
-		const result = await page.evaluate(async (baseUrl) => {
-			const resp = await fetch(`${baseUrl}/xmlrpc.php`, {
+		const result = await page.evaluate(async () => {
+			const resp = await fetch('/xmlrpc.php', {
 				method: 'POST',
 				headers: { 'Content-Type': 'text/xml' },
 				body: `<?xml version="1.0"?>
@@ -984,7 +969,7 @@ test.describe('XML-RPC Blocking', () => {
 					</methodCall>`,
 			});
 			return resp.text();
-		}, BASE);
+		});
 
 		expect(result).not.toContain('wp.newComment');
 	});
@@ -1002,8 +987,8 @@ test.describe('XML-RPC Blocking', () => {
 			})
 		);
 
-		const result = await page.evaluate(async (baseUrl) => {
-			const resp = await fetch(`${baseUrl}/xmlrpc.php`, {
+		const result = await page.evaluate(async () => {
+			const resp = await fetch('/xmlrpc.php', {
 				method: 'POST',
 				headers: { 'Content-Type': 'text/xml' },
 				body: `<?xml version="1.0"?>
@@ -1013,7 +998,7 @@ test.describe('XML-RPC Blocking', () => {
 					</methodCall>`,
 			});
 			return resp.text();
-		}, BASE);
+		});
 
 		expect(result).toContain('wp.newComment');
 	});
@@ -1490,7 +1475,7 @@ test.describe('Frontend Verification', () => {
 
 		// Check via REST (comment count on post)
 		await login(page);
-		await page.goto(`${BASE}/wp-admin/`);
+		await page.goto(`/wp-admin/`);
 		const restNonce = await page.evaluate(() => (window as any).wpApiSettings?.nonce ?? '');
 
 		const result = await page.evaluate(
@@ -1501,7 +1486,7 @@ test.describe('Frontend Verification', () => {
 				});
 				return resp.json();
 			},
-			{ restUrl: REST_URL, postId: testPostId, nonce: restNonce }
+			{ restUrl: '/wp-json/wp/v2', postId: testPostId, nonce: restNonce }
 		);
 
 		// comment_status should be 'closed' when disabled
@@ -1512,7 +1497,7 @@ test.describe('Frontend Verification', () => {
 		disableCommentsViaCliAll();
 
 		await login(page);
-		await page.goto(`${BASE}/wp-admin/widgets.php`);
+		await page.goto(`/wp-admin/widgets.php`);
 
 		const body = await page.content();
 		// Recent Comments widget should not be available
@@ -1528,7 +1513,7 @@ test.describe('Frontend Verification', () => {
 
 		await login(page);
 		// Open classic editor for the test post
-		await page.goto(`${BASE}/wp-admin/post.php?post=${testPostId}&action=edit`);
+		await page.goto(`/wp-admin/post.php?post=${testPostId}&action=edit`);
 
 		// The discussion metabox should not be present (comment support removed)
 		const discussionBox = page.locator('#commentstatusdiv, #commentsdiv');
@@ -1841,7 +1826,7 @@ test.describe('Edge Cases', () => {
 
 		// REST API: blocked for creating new comments
 		await login(page);
-		await page.goto(`${BASE}/wp-admin/`);
+		await page.goto(`/wp-admin/`);
 		const restNonce = await page.evaluate(() => (window as any).wpApiSettings?.nonce ?? '');
 
 		const result = await page.evaluate(
@@ -1860,7 +1845,7 @@ test.describe('Edge Cases', () => {
 				});
 				return { status: resp.status };
 			},
-			{ restUrl: REST_URL, postId: testPostId, nonce: restNonce }
+			{ restUrl: '/wp-json/wp/v2', postId: testPostId, nonce: restNonce }
 		);
 
 		// REST should be blocked
@@ -1917,7 +1902,7 @@ test.describe('PR #161 — get_sub_sites per-site activation bypass', () => {
 		await login(page, 'subadmin2', 'password');
 
 		// Navigate to settings page to get nonce
-		await page.goto(`${BASE}/wp-admin/network/settings.php?page=disable_comments_settings`);
+		await page.goto(`/wp-admin/network/settings.php?page=disable_comments_settings`);
 		const nonce = await page.evaluate(
 			() => (window as any).disableCommentsObj?._nonce ?? ''
 		);
@@ -1940,7 +1925,7 @@ test.describe('PR #161 — get_sub_sites per-site activation bypass', () => {
 				const resp = await fetch(`${ajax}?${params}`, { credentials: 'same-origin' });
 				return resp.json();
 			},
-			{ ajax: AJAX_URL, n: nonce }
+			{ ajax: '/wp-admin/admin-ajax.php', n: nonce }
 		);
 
 		// Must return empty data regardless of plugin activation mode
@@ -1965,7 +1950,7 @@ test.describe('PR #161 — get_sub_sites per-site activation bypass', () => {
 				const resp = await fetch(`${ajax}?${params}`, { credentials: 'same-origin' });
 				return resp.json();
 			},
-			{ ajax: AJAX_URL, n: nonce }
+			{ ajax: '/wp-admin/admin-ajax.php', n: nonce }
 		);
 
 		expect(Number(result.totalNumber)).toBeGreaterThanOrEqual(1);

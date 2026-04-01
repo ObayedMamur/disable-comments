@@ -17,8 +17,9 @@
 import { test, expect, type Page } from '@playwright/test';
 import { execSync } from 'child_process';
 
-const BASE = 'http://localhost:8888';
-const AJAX_URL = `${BASE}/wp-admin/admin-ajax.php`;
+// baseURL is injected by Playwright config (dynamic wp-env port).
+// All page.goto() calls use relative paths so baseURL is prepended automatically.
+const AJAX_PATH = '/wp-admin/admin-ajax.php';
 
 /** Run a wp-cli command inside wp-env and return stdout. */
 function wpCli(cmd: string): string {
@@ -62,7 +63,7 @@ test.beforeAll(() => {
 // ---------------------------------------------------------------------------
 
 async function login(page: Page, user: string, pass: string): Promise<void> {
-	await page.goto(`${BASE}/wp-login.php`);
+	await page.goto('/wp-login.php');
 	await page.fill('#user_login', user);
 	await page.fill('#user_pass', pass);
 	await page.click('#wp-submit');
@@ -78,7 +79,7 @@ async function login(page: Page, user: string, pass: string): Promise<void> {
 async function assertPluginLoaded(page: Page): Promise<void> {
 	// Navigate to dashboard and check if the plugin is doing anything
 	// (e.g., removing comment-related admin elements, enqueuing scripts).
-	await page.goto(`${BASE}/wp-admin/`);
+	await page.goto('/wp-admin/');
 	const pluginActive = await page.evaluate(() => {
 		// The plugin hides #menu-comments when remove_everywhere is on.
 		// Or it may show a notice. Check for any sign the plugin class loaded.
@@ -102,7 +103,7 @@ async function assertPluginLoaded(page: Page): Promise<void> {
 async function getSettingsNonce(page: Page): Promise<string> {
 	// Navigate to any admin page so we have auth cookies.
 	if (!page.url().includes('/wp-admin')) {
-		await page.goto(`${BASE}/wp-admin/`);
+		await page.goto('/wp-admin/');
 	}
 	// Generate nonce via inline PHP evaluation through an admin-ajax roundtrip.
 	// We use the fact that WordPress creates nonces per-user, so any logged-in
@@ -121,7 +122,7 @@ async function getSettingsNonce(page: Page): Promise<string> {
 			body: 'action=generate_dc_nonce',
 		});
 		return resp.text();
-	}, AJAX_URL);
+	}, AJAX_PATH);
 	// The above won't work (no such AJAX action). Instead, we access a page
 	// that exposes the nonce. The settings page is blocked for subadmin,
 	// but the nonce action name is known. On multisite, any admin can create
@@ -151,7 +152,7 @@ test.describe('Issue #1 — Settings page access', () => {
 	test('sub-site admin can see settings page but SAVE is blocked by sitewide guard', async ({ page }) => {
 		await login(page, 'subadmin', 'password');
 		await assertPluginLoaded(page);
-		await page.goto(`${BASE}/wp-admin/options-general.php?page=disable_comments_settings`);
+		await page.goto('/wp-admin/options-general.php?page=disable_comments_settings');
 
 		// Page loads (sitewide_settings=1 shows it), but saving must be blocked.
 		await expect(page.locator('#disableCommentSaveSettings')).toBeVisible();
@@ -172,14 +173,14 @@ test.describe('Issue #1 — Settings page access', () => {
 				}).toString(),
 			});
 			return resp.json();
-		}, { ajax: AJAX_URL, n: nonce });
+		}, { ajax: AJAX_PATH, n: nonce });
 
 		// Our sitewide guard blocks the save.
 		expect(result.success).toBe(false);
 	});
 
 	test('super admin CAN access network settings page', async ({ page }) => {
-		await page.goto(`${BASE}/wp-login.php?redirect_to=${encodeURIComponent(BASE + '/wp-admin/network/settings.php?page=disable_comments_settings')}`);
+		await page.goto(`/wp-login.php?redirect_to=${encodeURIComponent('/wp-admin/network/settings.php?page=disable_comments_settings')}`);
 		await page.fill('#user_login', 'admin');
 		await page.fill('#user_pass', 'password');
 		await page.click('#wp-submit');
@@ -191,7 +192,7 @@ test.describe('Issue #1 — Settings page access', () => {
 	});
 
 	test('super admin can save settings via AJAX', async ({ page }) => {
-		await page.goto(`${BASE}/wp-login.php?redirect_to=${encodeURIComponent(BASE + '/wp-admin/network/settings.php?page=disable_comments_settings')}`);
+		await page.goto(`/wp-login.php?redirect_to=${encodeURIComponent('/wp-admin/network/settings.php?page=disable_comments_settings')}`);
 		await page.fill('#user_login', 'admin');
 		await page.fill('#user_pass', 'password');
 		await page.click('#wp-submit');
@@ -216,7 +217,7 @@ test.describe('Issue #1 — Settings page access', () => {
 				}).toString(),
 			});
 			return resp.json();
-		}, { ajax: AJAX_URL, n: nonce });
+		}, { ajax: AJAX_PATH, n: nonce });
 
 		expect(result.success).toBe(true);
 	});
@@ -232,7 +233,7 @@ test.describe('Issue #2 — Delete comments access', () => {
 		await assertPluginLoaded(page);
 
 		// Navigate to settings page (tools page redirects to settings#delete).
-		await page.goto(`${BASE}/wp-admin/options-general.php?page=disable_comments_settings`);
+		await page.goto('/wp-admin/options-general.php?page=disable_comments_settings');
 		await expect(page.locator('#disableCommentSaveSettings')).toBeVisible();
 
 		// Get nonce from the page.
@@ -252,7 +253,7 @@ test.describe('Issue #2 — Delete comments access', () => {
 				}).toString(),
 			});
 			return resp.json();
-		}, { ajax: AJAX_URL, n: nonce });
+		}, { ajax: AJAX_PATH, n: nonce });
 
 		expect(result.success).toBe(false);
 	});
@@ -264,7 +265,7 @@ test.describe('Issue #2 — Delete comments access', () => {
 test.describe('Issue #3 — XSS in role names', () => {
 
 	test('no raw HTML tags in data-options attributes on network settings', async ({ page }) => {
-		await page.goto(`${BASE}/wp-login.php?redirect_to=${encodeURIComponent(BASE + '/wp-admin/network/settings.php?page=disable_comments_settings')}`);
+		await page.goto(`/wp-login.php?redirect_to=${encodeURIComponent('/wp-admin/network/settings.php?page=disable_comments_settings')}`);
 		await page.fill('#user_login', 'admin');
 		await page.fill('#user_pass', 'password');
 		await page.click('#wp-submit');
@@ -288,7 +289,7 @@ test.describe('Issue #3 — XSS in role names', () => {
 	});
 
 	test('no XSS dialog fires when interacting with role exclusion UI', async ({ page }) => {
-		await page.goto(`${BASE}/wp-login.php?redirect_to=${encodeURIComponent(BASE + '/wp-admin/network/settings.php?page=disable_comments_settings')}`);
+		await page.goto(`/wp-login.php?redirect_to=${encodeURIComponent('/wp-admin/network/settings.php?page=disable_comments_settings')}`);
 		await page.fill('#user_login', 'admin');
 		await page.fill('#user_pass', 'password');
 		await page.click('#wp-submit');
@@ -317,7 +318,7 @@ test.describe('Issue #4 — Network admin context', () => {
 
 	test('disableCommentsObj.is_network_admin is "1" on network admin', async ({ page }) => {
 		// Super admin on network settings page should see '1'.
-		await page.goto(`${BASE}/wp-login.php?redirect_to=${encodeURIComponent(BASE + '/wp-admin/network/settings.php?page=disable_comments_settings')}`);
+		await page.goto(`/wp-login.php?redirect_to=${encodeURIComponent('/wp-admin/network/settings.php?page=disable_comments_settings')}`);
 		await page.fill('#user_login', 'admin');
 		await page.fill('#user_pass', 'password');
 		await page.click('#wp-submit');
@@ -328,7 +329,7 @@ test.describe('Issue #4 — Network admin context', () => {
 	});
 
 	test('JS builds networkAjaxUrl with is_network_admin=1 on network admin', async ({ page }) => {
-		await page.goto(`${BASE}/wp-login.php?redirect_to=${encodeURIComponent(BASE + '/wp-admin/network/settings.php?page=disable_comments_settings')}`);
+		await page.goto(`/wp-login.php?redirect_to=${encodeURIComponent('/wp-admin/network/settings.php?page=disable_comments_settings')}`);
 		await page.fill('#user_login', 'admin');
 		await page.fill('#user_pass', 'password');
 		await page.click('#wp-submit');
@@ -354,7 +355,7 @@ test.describe('Issue #4 — Network admin context', () => {
 test.describe('Issue #5 — Subsite enumeration', () => {
 
 	test('super admin sees network settings page with subsites', async ({ page }) => {
-		await page.goto(`${BASE}/wp-login.php?redirect_to=${encodeURIComponent(BASE + '/wp-admin/network/settings.php?page=disable_comments_settings')}`);
+		await page.goto(`/wp-login.php?redirect_to=${encodeURIComponent('/wp-admin/network/settings.php?page=disable_comments_settings')}`);
 		await page.fill('#user_login', 'admin');
 		await page.fill('#user_pass', 'password');
 		await page.click('#wp-submit');
@@ -382,7 +383,7 @@ test.describe('Issue #5 — Subsite enumeration', () => {
 		await login(page, 'subscriber', 'password');
 		// Subscriber can't call assertPluginLoaded (no AJAX access for non-admin).
 		// Instead, verify from a different user first.
-		await page.goto(`${BASE}/wp-admin/options-general.php?page=disable_comments_settings`);
+		await page.goto('/wp-admin/options-general.php?page=disable_comments_settings');
 
 		const content = await page.content();
 		const blocked =
@@ -396,7 +397,7 @@ test.describe('Issue #5 — Subsite enumeration', () => {
 	test('sub-site admin gets nonce but AJAX to get_sub_sites returns empty', async ({ page }) => {
 		await login(page, 'subadmin', 'password');
 		await assertPluginLoaded(page);
-		await page.goto(`${BASE}/wp-admin/options-general.php?page=disable_comments_settings`);
+		await page.goto('/wp-admin/options-general.php?page=disable_comments_settings');
 
 		// Subadmin CAN see the page (sitewide_settings=1 shows it).
 		const nonce = await page.evaluate(() => (window as any).disableCommentsObj?._nonce ?? '');
@@ -410,7 +411,7 @@ test.describe('Issue #5 — Subsite enumeration', () => {
 			});
 			const resp = await fetch(`${ajax}?${params}`, { credentials: 'same-origin' });
 			return resp.json();
-		}, { ajax: AJAX_URL, n: nonce });
+		}, { ajax: AJAX_PATH, n: nonce });
 
 		expect(result.data).toEqual([]);
 		expect(Number(result.totalNumber)).toBe(0);
