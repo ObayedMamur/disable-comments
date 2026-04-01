@@ -15,7 +15,7 @@ const PORT_FILE = path.join(__dirname, '../.wp-env-port');
 // Destroy first so stale containers / volumes from a previous run are gone,
 // preventing duplicate MySQL containers and startup race conditions.
 console.log('Destroying previous wp-env environment...');
-const destroy = spawn('npx', ['wp-env', 'destroy', '--yes'], { stdio: 'inherit' });
+const destroy = spawn('npx', ['wp-env', 'destroy', '--force'], { stdio: 'inherit' });
 destroy.on('close', function () {
 	// Ignore the exit code — destroy fails harmlessly when nothing exists yet.
 	startEnv();
