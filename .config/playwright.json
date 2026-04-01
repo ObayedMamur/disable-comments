@@ -1,0 +1,17 @@
+{
+  "baseUrl": "http://localhost:8888",
+  "credentials": {
+    "username": "admin",
+    "password": "password"
+  },
+  "timeouts": {
+    "pageLoad": 10000,
+    "elementWait": 5000,
+    "networkRequest": 30000
+  },
+  "testPages": {
+    "settings": "/wp-admin/options-general.php?page=disable_comments_settings",
+    "networkSettings": "/wp-admin/network/settings.php?page=disable_comments_settings",
+    "tools": "/wp-admin/tools.php?page=disable_comments_tools"
+  }
+}

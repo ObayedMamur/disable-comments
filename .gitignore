@@ -12,3 +12,5 @@ package-lock.json
 pnpm-lock.yaml
 .ai/security/
 .claude/worktrees/
+.wp-env-port
+tests/test-results/

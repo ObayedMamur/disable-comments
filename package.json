@@ -8,7 +8,11 @@
     "build": "grunt build",
     "pot": "wp i18n make-pot . languages/disable-comments.pot ",
     "r": "npm run build && wp dist-archive .",
-    "release": "npm run build && npm run pot && npm run r"
+    "release": "npm run build && npm run pot && npm run r",
+    "test:start": "node scripts/wp-env-start.js",
+    "test:e2e": "npx playwright test",
+    "test:e2e:ui": "npx playwright test --ui",
+    "test:destroy": "npx wp-env destroy"
   },
   "devDependencies": {
     "@babel/core": "^7.11.1",
