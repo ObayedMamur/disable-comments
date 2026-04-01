@@ -4,11 +4,9 @@
   "port": 8888,
   "autoPort": true,
   "plugins": [
+    ".",
     "https://downloads.wordpress.org/plugin/woocommerce.zip"
   ],
-  "mappings": {
-    "wp-content/plugins/disable-comments": "."
-  },
   "multisite": true,
   "testsEnvironment": false,
   "config": {
