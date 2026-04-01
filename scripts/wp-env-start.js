@@ -11,22 +11,36 @@ const fs = require('fs');
 const path = require('path');
 
 const PORT_FILE = path.join(__dirname, '../.wp-env-port');
-const args = ['wp-env', 'start', '--update', '--auto-port', ...process.argv.slice(2)];
-const child = spawn('npx', args, { stdio: ['inherit', 'pipe', 'pipe'] });
 
-let output = '';
+// Destroy first so stale containers / volumes from a previous run are gone,
+// preventing duplicate MySQL containers and startup race conditions.
+console.log('Destroying previous wp-env environment...');
+const destroy = spawn('npx', ['wp-env', 'destroy', '--yes'], { stdio: 'inherit' });
+destroy.on('close', function () {
+	// Ignore the exit code — destroy fails harmlessly when nothing exists yet.
+	startEnv();
+});
 
-function pipe(stream, dest) {
-	stream.on('data', function (chunk) {
-		dest.write(chunk);
-		output += chunk.toString();
-	});
+function startEnv() {
+	const args = ['wp-env', 'start', '--update', '--auto-port', ...process.argv.slice(2)];
+	const child = spawn('npx', args, { stdio: ['inherit', 'pipe', 'pipe'] });
+
+	let output = '';
+
+	function pipe(stream, dest) {
+		stream.on('data', function (chunk) {
+			dest.write(chunk);
+			output += chunk.toString();
+		});
+	}
+
+	pipe(child.stdout, process.stdout);
+	pipe(child.stderr, process.stderr);
+
+	child.on('close', afterStart);
 }
 
-pipe(child.stdout, process.stdout);
-pipe(child.stderr, process.stderr);
-
-child.on('close', function (code) {
+function afterStart(code) {
 	var match = output.match(/development site started at http:\/\/localhost:(\d+)/i);
 	if (!match) {
 		// Fallback: try the "WordPress development site" phrasing used by newer wp-env
@@ -105,4 +119,4 @@ child.on('close', function (code) {
 			process.exit(activateCode || 0);
 		});
 	}
-});
+}
