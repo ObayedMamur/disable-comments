@@ -78,33 +78,33 @@ jobs:
       - name: Start Database
         run: |
           sudo systemctl start mysql
-          # MySQL 8 defaults to caching_sha2_password, which PHP 5.6's mysqli does not
-          # support (error 2054). We must switch ALL root accounts to mysql_native_password:
+          # PHP 5.6's mysqli cannot negotiate MySQL 8's default caching_sha2_password
+          # protocol (error 2054) — regardless of whether we use TCP or socket.
+          # ALTER USER on root is unreliable: the root account may use auth_socket,
+          # a different host entry, or a MySQL version where mysql_native_password
+          # is restricted.
           #
-          # - 'root'@'localhost'  — socket account, used by bare `mysql` CLI calls
-          # - 'root'@'127.0.0.1' — TCP account, hit by `wp config create --dbhost=127.0.0.1`
-          # - 'root'@'%'          — wildcard TCP account (present on some runner images)
-          #
-          # All ALTER commands run via socket (no -h flag) so they always succeed.
-          # The 127.0.0.1 and % commands use || true because those accounts may not
-          # exist on every runner image — that is not an error.
-          mysql -u root -proot -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'root'; FLUSH PRIVILEGES;"
-          mysql -u root -proot -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED WITH mysql_native_password BY 'root'; FLUSH PRIVILEGES;" 2>/dev/null || true
-          mysql -u root -proot -e "ALTER USER 'root'@'%' IDENTIFIED WITH mysql_native_password BY 'root'; FLUSH PRIVILEGES;" 2>/dev/null || true
-          mysql -u root -proot -e "CREATE DATABASE wordpress_test;"
+          # Robust fix: create a DEDICATED WordPress test user and explicitly declare
+          # mysql_native_password at creation time. mysql_native_password is supported
+          # by every PHP version from 5.6 through 8.x. We create both @localhost and
+          # @127.0.0.1 so the account matches regardless of how PHP resolves the host.
+          mysql -u root -proot -e "
+            CREATE DATABASE wordpress_test;
+            CREATE USER 'wptest'@'localhost'  IDENTIFIED WITH mysql_native_password BY 'wptest';
+            CREATE USER 'wptest'@'127.0.0.1' IDENTIFIED WITH mysql_native_password BY 'wptest';
+            GRANT ALL PRIVILEGES ON wordpress_test.* TO 'wptest'@'localhost';
+            GRANT ALL PRIVILEGES ON wordpress_test.* TO 'wptest'@'127.0.0.1';
+            FLUSH PRIVILEGES;
+          "
 
       # 4. Download and Install WordPress Core
       - name: Install WordPress Core
         run: |
           wp core download --version=${{ matrix.wp-version }} --path=./test-site --allow-root
           cd test-site
-          # Use 'localhost' (not '127.0.0.1') so PHP connects via Unix socket.
-          # On Linux, PHP's mysqli treats 'localhost' as a socket connection — this
-          # bypasses caching_sha2_password entirely, since socket auth uses the
-          # mysql_native_password we already set on 'root'@'localhost'. Connecting
-          # via 127.0.0.1 (TCP) hits a separate MySQL account that may still use
-          # caching_sha2_password, which PHP 5.6's mysqli cannot handle (error 2054).
-          wp config create --dbname=wordpress_test --dbuser=root --dbpass=root --dbhost=localhost --allow-root
+          # Use the dedicated 'wptest' user (created with mysql_native_password above).
+          # Avoids caching_sha2_password issues with PHP 5.6 entirely.
+          wp config create --dbname=wordpress_test --dbuser=wptest --dbpass=wptest --dbhost=127.0.0.1 --allow-root
           wp core install --url=http://localhost:8080 --title="DC Test" --admin_user=admin --admin_password=password --admin_email=test@example.com --allow-root
 
       # 5. Convert to WordPress Multisite (only for the multisite matrix entry)
