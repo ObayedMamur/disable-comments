@@ -197,9 +197,20 @@ jobs:
           echo "✅ All PHP files pass syntax check"
 
       # 11. Verify Admin Menu Registration
-      # In WP-CLI context is_admin()=false, so the 'admin_menu' action is never fired.
-      # We bypass this by calling settings_menu() directly on the already-initialized
-      # Disable_Comments singleton, then check $submenu for the registered slug.
+      # In WP-CLI context is_admin()=false and is_network_admin()=false, so the
+      # 'admin_menu'/'network_admin_menu' actions are never fired.
+      # We call settings_menu() directly, but first we must satisfy two conditions:
+      #
+      # (A) is_network_admin() must return true for network-active DC, because
+      #     settings_menu() only registers under settings.php when BOTH networkactive
+      #     AND is_network_admin() are true. WP-CLI never sets WP_NETWORK_ADMIN, so
+      #     we define it here to make is_network_admin() return true.
+      #
+      # (B) The current user must pass current_user_can('manage_network_plugins').
+      #     In multisite WordPress routes this through is_super_admin(). We set the
+      #     $super_admins global directly so get_super_admins() (which checks the
+      #     global first, before the DB) returns the admin login immediately.
+      #
       # Single-site: DC registers under options-general.php (Settings > Disable Comments)
       # Multisite / network-active: DC registers under settings.php (Network Admin > Settings)
       - name: Verify Admin Menu Registration
@@ -208,14 +219,22 @@ jobs:
           wp eval '
             require_once ABSPATH . "wp-admin/includes/admin.php";
 
-            // In WP-CLI context no WP user is authenticated, so add_submenu_page()
-            // fails its internal current_user_can() check and never writes to $submenu.
-            // Set user 1 (the admin created during install) to satisfy the capability check.
-            wp_set_current_user(1);
-            // For multisite, settings_menu() uses 'manage_network_plugins' which is
-            // a super-admin capability — manage_options alone is not enough.
-            if (is_multisite()) {
-              grant_super_admin(1);
+            // (A) Fake network-admin context so is_network_admin() returns true.
+            // settings_menu() checks: if ($this->networkactive && is_network_admin()).
+            // Without this, when network-active, the else-if (!networkactive || sitewide)
+            // also evaluates to false, and NO menu is registered at all.
+            if (is_multisite() && !defined("WP_NETWORK_ADMIN")) {
+              define("WP_NETWORK_ADMIN", true);
+            }
+
+            // (B) Authenticate as the install admin and ensure super-admin status.
+            // get_super_admins() reads $super_admins global before touching the DB.
+            // Set it directly so is_super_admin(1) is guaranteed true in CLI context.
+            $user = get_userdata(1);
+            if ($user) {
+              global $super_admins;
+              $super_admins = array($user->user_login);
+              wp_set_current_user(1);
             }
 
             // Disable_Comments is already initialized via plugins_loaded.
