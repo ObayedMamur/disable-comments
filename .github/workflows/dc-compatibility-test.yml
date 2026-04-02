@@ -78,6 +78,10 @@ jobs:
       - name: Start Database
         run: |
           sudo systemctl start mysql
+          # MySQL 8 defaults to caching_sha2_password, which PHP 5.6's mysqli does not
+          # support (error 2054). Switch root to mysql_native_password so every PHP
+          # version in the matrix can connect. sudo mysql uses the socket (no password).
+          sudo mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'root'; FLUSH PRIVILEGES;"
           mysql -u root -proot -e "CREATE DATABASE wordpress_test;"
 
       # 4. Download and Install WordPress Core
