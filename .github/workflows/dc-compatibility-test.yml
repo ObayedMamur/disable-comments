@@ -77,17 +77,24 @@ jobs:
       # 3. Start MySQL service (required for WordPress installation)
       - name: Start Database
         run: |
-          sudo systemctl start mysql
-          # PHP 5.6's mysqli cannot negotiate MySQL 8's default caching_sha2_password
-          # protocol (error 2054) — regardless of whether we use TCP or socket.
-          # ALTER USER on root is unreliable: the root account may use auth_socket,
-          # a different host entry, or a MySQL version where mysql_native_password
-          # is restricted.
+          # PHP 5.6's mysqli fails with error 2054 when MySQL 8 sends caching_sha2_password
+          # in the INITIAL HANDSHAKE PACKET — this happens regardless of what plugin
+          # the connecting user's account uses, because MySQL sends its server-default
+          # plugin first. PHP 5.6 errors out immediately, before the per-user plugin
+          # switch (AuthSwitchRequest) can even be negotiated.
           #
-          # Robust fix: create a DEDICATED WordPress test user and explicitly declare
-          # mysql_native_password at creation time. mysql_native_password is supported
-          # by every PHP version from 5.6 through 8.x. We create both @localhost and
-          # @127.0.0.1 so the account matches regardless of how PHP resolves the host.
+          # Fix: set default_authentication_plugin=mysql_native_password in MySQL config
+          # BEFORE starting MySQL. This changes the initial handshake to use
+          # mysql_native_password, which PHP 5.6 understands. The 'loose_' prefix
+          # silently ignores the option on MySQL 8.4+ where it was removed.
+          printf '[mysqld]\nloose_default_authentication_plugin=mysql_native_password\n' \
+            | sudo tee /etc/mysql/conf.d/mysql56-compat.cnf > /dev/null
+
+          sudo systemctl start mysql
+
+          # Create a dedicated WordPress test user. mysql_native_password is safe
+          # for all PHP versions (5.6 – 8.x). Both @localhost and @127.0.0.1 are
+          # created so the account matches regardless of how PHP resolves the host.
           mysql -u root -proot -e "
             CREATE DATABASE wordpress_test;
             CREATE USER 'wptest'@'localhost'  IDENTIFIED WITH mysql_native_password BY 'wptest';
