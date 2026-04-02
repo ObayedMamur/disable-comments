@@ -204,6 +204,11 @@ jobs:
           wp eval '
             require_once ABSPATH . "wp-admin/includes/admin.php";
 
+            // In WP-CLI context no WP user is authenticated, so add_submenu_page()
+            // fails its internal current_user_can() check and never writes to $submenu.
+            // Set user 1 (the admin created during install) to satisfy the capability check.
+            wp_set_current_user(1);
+
             // Disable_Comments is already initialized via plugins_loaded.
             // Directly invoke settings_menu() to register the WP submenu entries.
             $instance = Disable_Comments::get_instance();
