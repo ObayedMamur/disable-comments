@@ -683,19 +683,11 @@ class Disable_Comments {
 			// The comment ID is only in the URL (e.g., /wp/v2/comments/123), not in request params
 			if (!$comment_type && $request->is_method('DELETE')) {
 				$route_parts = explode('/', $request->get_route());
-				// PHP 5.6 compat: end() takes its arg by reference and returns a
-				// reference, which combined with a type-cast on the call site
-				// triggers "Only variables can be passed by reference". Use explicit
-				// index access instead — no by-reference semantics involved.
-				$route_last = count($route_parts) - 1;
-				$comment_id = $route_last >= 0 ? $route_parts[$route_last] : '';
+				$comment_id = end($route_parts);
 
 				// Ensure we have a numeric comment ID
 				if (is_numeric($comment_id)) {
-					// PHP 5.6 compat: store the cast result in a variable before
-					// passing to get_comment() — some WP versions take &$comment.
-					$comment_id_int = (int) $comment_id;
-					$comment = get_comment($comment_id_int);
+					$comment = get_comment((int) $comment_id);
 					if ($comment && isset($comment->comment_type)) {
 						$comment_type = $comment->comment_type;
 					}
