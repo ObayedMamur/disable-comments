@@ -79,9 +79,18 @@ jobs:
         run: |
           sudo systemctl start mysql
           # MySQL 8 defaults to caching_sha2_password, which PHP 5.6's mysqli does not
-          # support (error 2054). Switch root to mysql_native_password so every PHP
-          # version in the matrix can connect.
+          # support (error 2054). We must switch ALL root accounts to mysql_native_password:
+          #
+          # - 'root'@'localhost'  — socket account, used by bare `mysql` CLI calls
+          # - 'root'@'127.0.0.1' — TCP account, hit by `wp config create --dbhost=127.0.0.1`
+          # - 'root'@'%'          — wildcard TCP account (present on some runner images)
+          #
+          # All ALTER commands run via socket (no -h flag) so they always succeed.
+          # The 127.0.0.1 and % commands use || true because those accounts may not
+          # exist on every runner image — that is not an error.
           mysql -u root -proot -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'root'; FLUSH PRIVILEGES;"
+          mysql -u root -proot -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED WITH mysql_native_password BY 'root'; FLUSH PRIVILEGES;" 2>/dev/null || true
+          mysql -u root -proot -e "ALTER USER 'root'@'%' IDENTIFIED WITH mysql_native_password BY 'root'; FLUSH PRIVILEGES;" 2>/dev/null || true
           mysql -u root -proot -e "CREATE DATABASE wordpress_test;"
 
       # 4. Download and Install WordPress Core
@@ -558,11 +567,14 @@ jobs:
           wp disable-comments settings --types=post --add --allow-root
           echo "✅ wp disable-comments settings command executed"
 
-          # Verify the post type was persisted to the correct option store
+          # Verify the post type was persisted to the correct option store.
+          # IMPORTANT: DC's CLI path always calls update_option() (per-site), never
+          # update_site_option(). This is because disable_comments_settings() routes
+          # via is_network_admin_ajax_context() which is always false in WP-CLI
+          # (no HTTP admin URL, no $_GET['is_network_admin']). Always read back with
+          # get_option() here regardless of single-site vs multisite context.
           wp eval '
-            // DC uses site options when network-activated (multisite), per-site options otherwise
-            $get_fn = is_multisite() ? "get_site_option" : "get_option";
-            $opts = $get_fn("disable_comments_options", []);
+            $opts = get_option("disable_comments_options", array());
             if (empty($opts["disabled_post_types"]) || !in_array("post", (array) $opts["disabled_post_types"])) {
               // If remove_everywhere is true that also covers all post types
               if (!empty($opts["remove_everywhere"])) {
