@@ -208,6 +208,11 @@ jobs:
             // fails its internal current_user_can() check and never writes to $submenu.
             // Set user 1 (the admin created during install) to satisfy the capability check.
             wp_set_current_user(1);
+            // For multisite, settings_menu() uses 'manage_network_plugins' which is
+            // a super-admin capability — manage_options alone is not enough.
+            if (is_multisite()) {
+              grant_super_admin(1);
+            }
 
             // Disable_Comments is already initialized via plugins_loaded.
             // Directly invoke settings_menu() to register the WP submenu entries.
